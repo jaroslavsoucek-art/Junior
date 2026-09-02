@@ -3,6 +3,8 @@
 Lokální PWA pro trenéra mladších žáků: sestava před zápasem, střídání během zápasu, odehrané minuty.
 Bez backendu, bez účtů, bez sítě v runtime. Data žijí v `localStorage` telefonu.
 
+**Živě:** https://jaroslavsoucek-art.github.io/Junior/ (GitHub Pages, nasazuje se automaticky z `main`).
+
 ## Spuštění
 
 ```bash
