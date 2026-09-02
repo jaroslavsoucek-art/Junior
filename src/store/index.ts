@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { Formation, Lineup, Match, MatchEvent, Player, Settings } from '../types';
 import type { TabId } from '../components/TabBar';
-import { DEFAULT_FORMATION_ID, SEED_FORMATIONS, SEED_PLAYERS_BY_TEAM } from '../data/seed';
+import { DEFAULT_FORMATION_ID, SEED_FORMATIONS, SEED_PLAYERS_BY_TEAM, SEED_REVISION } from '../data/seed';
 import { getActiveTeam, migrateLegacyStorage, storageKeyFor, type Team } from '../lib/team';
 import { newId } from '../lib/id';
 import { remapAssignments, type Assignments } from '../lib/lineup';
@@ -451,8 +451,20 @@ export const useStore = create<AppState>()(
     }),
     {
       name: STORAGE_KEY,
-      version: 1,
+      version: SEED_REVISION,
       storage: createJSONStorage(() => localStorage),
+      /**
+       * Seed roster changed (e.g. team A got positions, duplicates removed).
+       * A store that has not been used yet – no matches, no lineups – takes
+       * the new seed; anything with real data is left alone.
+       */
+      migrate: (persisted, fromVersion) => {
+        const s = persisted as Partial<AppData>;
+        if (fromVersion < SEED_REVISION && (s.matches?.length ?? 0) === 0 && (s.lineups?.length ?? 0) === 0) {
+          return { ...s, players: SEED_PLAYERS_BY_TEAM[ACTIVE_TEAM] } as AppState;
+        }
+        return persisted as AppState;
+      },
       partialize: (s) => ({ ...pickData(s), draft: s.draft, tab: s.tab, activeMatchId: s.activeMatchId, matchDetailId: s.matchDetailId, lineupView: s.lineupView }),
     },
   ),

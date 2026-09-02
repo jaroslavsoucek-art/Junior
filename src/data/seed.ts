@@ -25,28 +25,30 @@ const B_RAW: Player[] = [
 ];
 export const SEED_PLAYERS_B: Player[] = B_RAW.map((p) => ({ ...p, team: 'B' as const }));
 
-// Tým A – posty zatím nezadané (doplní trenér v editoru hráče).
-export const SEED_PLAYERS_A: Player[] = [
-  'Gabriel',
-  'Marián',
-  'Sam',
-  'Matěj',
-  'Oski',
-  'Kotě',
-  'Mára',
-  'Patrik',
-  'Vašek',
-  'Vojta',
-  'Petr',
-  'Filip',
-  'Vondris',
-].map((name) => ({
+// Tým A.
+const A_RAW: [name: string, roles: PositionRole[]][] = [
+  ['Vašek', ['GK']],
+  ['Filip', ['DEF']],
+  ['Mára', ['DEF']],
+  ['Vojta', ['DEF']],
+  ['Patrik', ['MID_C']],
+  ['Petr', ['MID_C']],
+  ['Kotě', ['MID_W']],
+  ['Oski', ['MID_W']],
+  ['Sam', ['MID_W']],
+  ['Vondris', ['MID_W']],
+  ['Gabriel', ['FWD']],
+];
+export const SEED_PLAYERS_A: Player[] = A_RAW.map(([name, roles]) => ({
   id: `a-${name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()}`,
   name,
-  roles: [] as PositionRole[],
+  roles,
   active: true,
   team: 'A' as const,
 }));
+
+/** Bump when a seed roster changes so stores without own data pick it up (see store migrate). */
+export const SEED_REVISION = 2;
 
 export const SEED_PLAYERS_BY_TEAM = { A: SEED_PLAYERS_A, B: SEED_PLAYERS_B };
 /** @deprecated use SEED_PLAYERS_BY_TEAM – kept for tests */

@@ -166,7 +166,7 @@ scripts/gen-icons.swift  ikony z loga klubu (scripts/logo-src.png), bílé pozad
 
 - **Přepínač týmu** je v Nastavení. Každý tým má úplně oddělená data pod vlastním klíčem (`junior-v1-A`, `junior-v1-B`): kádr, sestavy, zápasy, minuty, rozpracovanou sestavu i nastavení. Aktivní tým je v `junior-team`. Přepnutí appku znovu načte, protože zustand store se vytváří nad konkrétním klíčem (`lib/team.ts`). Původní data z `junior-v1` se při prvním startu přesunou pod tým B.
 - **Kádr přijímá jen hráče z druhého týmu** („+ Přidat hráče z týmu A/B“ čte kádr druhého týmu ze storage, nebo jeho seed). Hostující hráč má žlutý štítek s písmenem domovského týmu a v původním týmu zůstává. Volné přidávání hráčů podle zadání není – kdyby přišel nový kluk, přidá se do seedu nebo importem.
-- **Áčko** (Gabriel, Marián, Sam, Matěj, Oski, Kotě, Mára, Patrik, Vašek, Vojta, Petr, Filip, Vondris) je naseedované **bez postů**: v kádru je sekce „Bez postu“, editor dovolí posty doplnit. Hráč bez postu má v návrzích neutrální fit (hodí se kamkoli, nikde přednostně).
+- **Áčko** (11 hráčů): GK Vašek · OB Filip, Mára, Vojta · SZ Patrik, Petr · KŘ Kotě, Oski, Sam, Vondris · ÚT Gabriel. Hráč bez postu (když ho trenér v editoru smaže) má v návrzích neutrální fit. Změna seedu má `SEED_REVISION`; store bez vlastních dat (žádné zápasy ani sestavy) si při startu vezme nový seed, store s daty zůstane netknutý.
 - **Export/import** je per tým: soubor `junior-A-<datum>.json` nese `team`, import do jiného týmu se odmítne s vysvětlením.
 - Hlavičky obrazovek mají zlatý štítek s písmenem aktivního týmu.
 
