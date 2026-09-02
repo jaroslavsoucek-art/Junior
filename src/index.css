@@ -1,0 +1,67 @@
+@import 'tailwindcss';
+
+@theme {
+  /* Pitch green: darker and less saturated than "grass green" so it stays readable in sunlight. */
+  --color-pitch: #2f6b45;
+  --color-pitch-dark: #245536;
+  --color-pitch-line: #e8f0e9;
+
+  /* Light, high-contrast UI. Saturated colour is an accent only. */
+  --color-paper: #f4f4f0;
+  --color-ink: #17201b;
+  --color-ink-muted: #5b665f;
+  --color-accent: #d9480f;
+
+  /* Role colours (chips / dots). */
+  --color-role-gk: #b7791f;
+  --color-role-def: #2b6cb0;
+  --color-role-midc: #2f855a;
+  --color-role-midw: #6b46c1;
+  --color-role-fwd: #c53030;
+}
+
+html,
+body,
+#root {
+  /* 100vh is wrong on iOS because of the address bar; dvh tracks the visible viewport. */
+  height: 100dvh;
+  margin: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  overscroll-behavior: none;
+}
+
+/* Pitch and bench: no double-tap zoom, no text selection, no long-press callout. */
+.no-touch-fx {
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Every interactive control is at least 48×48 px. */
+.tap {
+  min-width: 48px;
+  min-height: 48px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Bottom tab bar respects the iPhone home indicator. */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
