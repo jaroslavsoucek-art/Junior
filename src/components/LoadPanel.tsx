@@ -28,16 +28,9 @@ export function LoadPanel({
     const m = Math.round(d / 60);
     return m === 0 ? '±0 min' : m > 0 ? `+${m} min` : `−${-m} min`;
   };
+  if (!open) return null;
   return (
-    <div className="border-t border-ink/10 bg-white">
-      <button type="button" onClick={onToggle} aria-expanded={open} className="tap flex w-full items-center justify-between px-4 text-left">
-        <span className="font-bold">Vytížení</span>
-        <span className="text-sm text-ink-muted tabular-nums">
-          průměr {formatClock(avg)} {open ? '▲' : '▼'}
-        </span>
-      </button>
-      {open && (
-        <Modal title={`Vytížení · průměr ${formatClock(avg)}`} onClose={onToggle}>
+    <Modal title={`Vytížení · průměr ${formatClock(avg)}`} onClose={onToggle}>
           <ul>
             {rows.map((r) => (
               <li key={r.playerId} className={`flex items-center justify-between border-t border-ink/5 py-2 ${r.low ? 'text-accent' : ''}`}>
@@ -52,9 +45,7 @@ export function LoadPanel({
               </li>
             ))}
           </ul>
-          <p className="mt-3 text-xs text-ink-muted">● na hřišti · ○ na lavičce · oranžově = výrazně pod průměrem</p>
-        </Modal>
-      )}
-    </div>
+      <p className="mt-3 text-xs text-ink-muted">● na hřišti · ○ na lavičce · červeně = výrazně pod průměrem</p>
+    </Modal>
   );
 }

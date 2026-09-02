@@ -225,96 +225,88 @@ function LiveMatch({ match }: { match: Match }) {
       : state.kind === 'running'
         ? `${state.period}. půle`
         : state.kind === 'stopped'
-          ? `${state.period}. půle · zastaveno`
-          : 'Konec zápasu';
+          ? `${state.period}. půle · stop`
+          : 'Konec';
+
+  const rotationLabel = anchor === null ? 'po startu' : due ? 'TEĎ' : `za ${formatClock(remaining)}`;
 
   return (
     <div className="flex h-full flex-col no-touch-fx">
-      {/* clock + controls */}
-      <div className={`px-3 pt-2 ${overtime && running ? 'bg-accent/10' : ''}`}>
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-semibold text-ink-muted">
-              vs {match.opponent} · {periodLabel}
-            </p>
-            <p className={`text-5xl font-black tabular-nums leading-none ${overtime ? 'text-accent' : ''}`} aria-live="off">
-              {formatClock(elapsed)}
-              <span className="ml-2 text-base font-semibold text-ink-muted">/ {match.halfLengthMin}:00</span>
-            </p>
-          </div>
-          {!finished && (
-            <div className="flex flex-col gap-1">
-              {state.kind === 'not_started' && (
-                <Btn kind="primary" className="px-5 py-3" onClick={() => act.startPeriod(match.id, 1)}>
-                  ▶ Start 1. půle
-                </Btn>
-              )}
-              {state.kind === 'running' && (
-                <>
-                  <Btn className="px-4 py-2" onClick={() => { act.endPeriod(match.id); showToast('Čas zastaven'); }}>
-                    ⏸ Pauza
-                  </Btn>
-                  <Btn kind="danger" className="px-4 py-2" onClick={() => { act.endPeriod(match.id); showToast(`Konec ${state.period}. půle`); }}>
-                    Konec {state.period}. půle
-                  </Btn>
-                </>
-              )}
-              {state.kind === 'stopped' && (
-                <>
-                  <Btn className="px-4 py-2" onClick={() => act.startPeriod(match.id, state.period)}>
-                    ▶ Pokračovat
-                  </Btn>
-                  {state.period < match.halvesCount ? (
-                    <Btn kind="primary" className="px-4 py-2" onClick={() => act.startPeriod(match.id, state.period + 1)}>
-                      ▶ Start {state.period + 1}. půle
-                    </Btn>
-                  ) : (
-                    <Btn kind="danger" className="px-4 py-2" onClick={() => setConfirmFinish(true)}>
-                      Konec zápasu
-                    </Btn>
-                  )}
-                </>
-              )}
-            </div>
-          )}
+      {/* header: clock left, period controls right – one row, 48 px targets */}
+      <div className={`flex items-center justify-between gap-2 px-3 pt-1 ${overtime && running ? 'bg-accent/10' : ''}`}>
+        <div className="min-w-0">
+          <p className="truncate text-xs font-semibold text-ink-muted">
+            vs {match.opponent} · {periodLabel} · {match.halfLengthMin} min
+          </p>
+          <p className={`whitespace-nowrap text-4xl font-black tabular-nums leading-none ${overtime ? 'text-accent' : 'text-primary'}`}>{formatClock(elapsed)}</p>
         </div>
-
-        {/* rotation bar: countdown + one-button execution of the planned pairs */}
         {!finished && (
-          <div className={`mt-2 rounded-xl border-2 p-2 ${due ? 'border-accent bg-accent/10' : 'border-ink/15 bg-white'}`}>
-            <div className="flex items-center justify-between px-1">
-              <span className={`font-bold ${due ? 'text-accent' : ''}`}>
-                {due ? 'Střídat! Rotace je na řadě' : anchor === null ? 'Rotace po startu' : `Střídání za ${formatClock(remaining)}`}
-              </span>
-              <span className="text-xs font-semibold text-ink-muted">každých {match.rotationIntervalMin} min</span>
-            </div>
-            {planPairs.length > 0 && (
-              <p className="truncate px-1 text-xs text-ink-muted">
-                {planPairs.map((p) => `${name(p.onPlayerId)} ↔ ${name(p.offPlayerId)}`).join(' · ')}
-              </p>
+          <div className="flex shrink-0 gap-2">
+            {state.kind === 'not_started' && (
+              <Btn kind="primary" className="px-4" onClick={() => act.startPeriod(match.id, 1)}>
+                ▶ Start 1. půle
+              </Btn>
             )}
-            <div className="mt-1 flex gap-2">
-              <Btn kind={due ? 'danger' : 'primary'} className="flex-1 py-2" disabled={planPairs.length === 0 || state.kind === 'not_started'} onClick={() => executeRotation(planPairs)}>
-                Provést rotaci ({planPairs.length})
-              </Btn>
-              <Btn className="px-3 py-2" disabled={!rotationInput || bench.length === 0} onClick={() => setRotationOpen(true)}>
-                Upravit
-              </Btn>
-            </div>
+            {state.kind === 'running' && (
+              <>
+                <Btn className="px-3 text-xl" onClick={() => { act.endPeriod(match.id); showToast('Čas zastaven'); }}>
+                  ❚❚
+                </Btn>
+                <Btn kind="danger" className="px-3" onClick={() => { act.endPeriod(match.id); showToast(`Konec ${state.period}. půle`); }}>
+                  Konec {state.period}. půle
+                </Btn>
+              </>
+            )}
+            {state.kind === 'stopped' && (
+              <>
+                <Btn className="px-3" onClick={() => act.startPeriod(match.id, state.period)}>
+                  ▶ Dál
+                </Btn>
+                {state.period < match.halvesCount ? (
+                  <Btn kind="primary" className="px-3" onClick={() => act.startPeriod(match.id, state.period + 1)}>
+                    {state.period + 1}. půle
+                  </Btn>
+                ) : (
+                  <Btn kind="danger" className="px-3" onClick={() => setConfirmFinish(true)}>
+                    Konec zápasu
+                  </Btn>
+                )}
+              </>
+            )}
           </div>
-        )}
-        {!wakeLockSupported && !finished && !settings.wakeLockNoticeShown && (
-          <button
-            type="button"
-            onClick={() => act.updateSettings({ wakeLockNoticeShown: true })}
-            className="tap mt-1 w-full rounded-lg px-2 text-left text-xs text-ink-muted"
-          >
-            Displej může zhasnout, čas běží dál i se zhasnutým displejem. Tapem skrýt.
-          </button>
         )}
       </div>
 
-      {/* pitch */}
+      {/* rotation: one dominant button + small edit */}
+      {!finished && (
+        <div className="flex gap-2 px-3 pt-2">
+          <button
+            type="button"
+            disabled={planPairs.length === 0 || state.kind === 'not_started'}
+            onClick={() => executeRotation(planPairs)}
+            className={`tap flex h-14 min-w-0 flex-1 items-center justify-between rounded-xl px-4 text-white disabled:opacity-40 ${due ? 'bg-accent' : 'bg-primary'}`}
+          >
+            <span className="truncate text-lg font-bold">Provést rotaci ({planPairs.length})</span>
+            <span className="ml-3 shrink-0 text-base font-semibold tabular-nums opacity-90">{rotationLabel}</span>
+          </button>
+          <button
+            type="button"
+            disabled={!rotationInput || bench.length === 0}
+            onClick={() => setRotationOpen(true)}
+            className="tap h-14 w-14 rounded-xl border-2 border-ink/15 bg-white text-xl disabled:opacity-40"
+            aria-label="Upravit rotaci"
+          >
+            ✎
+          </button>
+        </div>
+      )}
+      {!wakeLockSupported && !finished && !settings.wakeLockNoticeShown && (
+        <button type="button" onClick={() => act.updateSettings({ wakeLockNoticeShown: true })} className="tap w-full px-4 text-left text-xs text-ink-muted">
+          Displej může zhasnout, čas běží dál. Tapem skrýt.
+        </button>
+      )}
+
+      {/* pitch – the dominant element */}
       <div className="min-h-0 flex-1 px-3 pt-2">
         {formation && (
           <Pitch>
@@ -336,18 +328,18 @@ function LiveMatch({ match }: { match: Match }) {
         )}
       </div>
 
-      {/* bench */}
+      {/* bench – one row, fewest minutes left */}
       <div className="border-t-2 border-ink/10">
-        <p className="px-3 pt-1 text-sm font-semibold text-ink-muted">
+        <p className="truncate px-3 pt-1 text-xs font-semibold text-ink-muted">
           {finished
             ? 'Zápas uzavřen – minuty jsou v sezónním součtu.'
             : sel?.kind === 'slot'
               ? `${name(pitch[sel.slotId]) || 'Prázdný slot'}: tapni, kdo jde na hřiště`
               : sel?.kind === 'bench'
                 ? `${selPlayer?.name}: tapni, koho střídá`
-                : `Lavička ${bench.length} · nejmíň hraje vlevo`}
+                : `Lavička ${bench.length} · nejmíň hraje vlevo · střídání = tap hráč + tap slot`}
         </p>
-        <div className="grid grid-flow-col grid-rows-2 content-start gap-2 overflow-x-auto px-3 py-2" style={{ touchAction: 'pan-x' }}>
+        <div className="flex gap-2 overflow-x-auto px-3 py-2" style={{ touchAction: 'pan-x' }}>
           {sel?.kind === 'slot' && pitch[sel.slotId] && (
             <button
               type="button"
@@ -360,26 +352,28 @@ function LiveMatch({ match }: { match: Match }) {
           {bench.map((p) => (
             <BenchTile key={p.id} player={p} sub={formatClock(seconds[p.id] ?? 0)} visual={tileVisual(p)} onTap={() => tapBench(p.id)} />
           ))}
-          {bench.length === 0 && <p className="row-span-2 self-center px-2 text-ink-muted">Lavička je prázdná.</p>}
+          {bench.length === 0 && <p className="self-center px-2 text-ink-muted">Lavička je prázdná.</p>}
         </div>
       </div>
 
-      <LoadPanel availableIds={available} seconds={seconds} players={players} onPitchIds={onPitchIds} open={loadOpen} onToggle={() => setLoadOpen((v) => !v)} />
-
-      {!finished && state.kind !== 'not_started' && state.kind !== 'stopped' && (
-        <div className="border-t border-ink/10 bg-white px-3 py-2">
-          <Btn kind="ghost" className="w-full text-accent" onClick={() => setConfirmFinish(true)}>
+      {/* bottom row: load panel + finish */}
+      <div className="flex items-stretch border-t border-ink/10 bg-white">
+        <button type="button" onClick={() => setLoadOpen(true)} className="tap flex flex-1 items-center justify-between px-4 text-left">
+          <span className="font-bold">Vytížení</span>
+          <span className="text-sm text-ink-muted tabular-nums">ø {formatClock(load.avg)} ▸</span>
+        </button>
+        {!finished && state.kind !== 'not_started' && (
+          <button type="button" onClick={() => setConfirmFinish(true)} className="tap border-l border-ink/10 px-4 font-semibold text-accent">
             Konec zápasu
-          </Btn>
-        </div>
-      )}
-      {state.kind === 'not_started' && (
-        <div className="border-t border-ink/10 bg-white px-3 py-2">
-          <Btn kind="ghost" className="w-full text-ink-muted" onClick={() => act.setTab('match')}>
-            ← Příprava zápasu
-          </Btn>
-        </div>
-      )}
+          </button>
+        )}
+        {state.kind === 'not_started' && (
+          <button type="button" onClick={() => act.setTab('match')} className="tap border-l border-ink/10 px-4 font-semibold text-ink-muted">
+            ← Příprava
+          </button>
+        )}
+      </div>
+      {loadOpen && <LoadPanel availableIds={available} seconds={seconds} players={players} onPitchIds={onPitchIds} open onToggle={() => setLoadOpen(false)} />}
 
       {toast && (
         <div className="fixed inset-x-3 bottom-24 z-40 flex items-center justify-between gap-3 rounded-xl bg-ink px-4 py-3 text-white shadow-lg">
