@@ -49,6 +49,35 @@ Lokálně stejný build vyrobíš přes `BASE_PATH=/junior/ npm run build`. Bez 
 
 Aktualizace: `registerType: 'autoUpdate'` – nová verze SW se stáhne na pozadí a aktivuje při dalším otevření appky. Během živého zápasu se nic nereloaduje samo.
 
+## Sdílení dat mezi telefony (Firebase, volitelné)
+
+Bez nastavení je appka čistě offline v telefonu. Když chceš data sdílet s kolegy, zapojí se Firebase Firestore – bez uživatelských účtů, přes sdílený **kód klubu**.
+
+### Jednorázové nastavení ve Firebase konzoli
+
+1. Vytvoř projekt (nebo použij existující) → *Build → Firestore Database → Create database* (production mode, region `europe-west3`).
+2. *Build → Authentication → Sign-in method → Anonymous → Enable.* Appka se přihlašuje anonymně jen proto, aby pravidla mohla vyžadovat přihlášeného klienta.
+3. *Firestore → Rules* → vlož obsah souboru `firestore.rules` z repa a publikuj. Pravidla pouští jen cestu `teams/{kód}/squads/{A|B}`, kód musí mít 16–64 znaků, dokument musí mít správný tvar a velikost pod 950 kB.
+4. *Project settings → Your apps → Add app → Web* → zkopíruj objekt `firebaseConfig`.
+
+### Konfigurace v appce
+
+- **Netlify (doporučeno):** *Site configuration → Environment variables* → `VITE_FIREBASE_CONFIG` = objekt `firebaseConfig` jako JSON na jeden řádek (viz `.env.example`). Po redeployi je Firebase zapnutý pro všechny, kdo appku otevřou z Netlify.
+- **Bez redeploye / GitHub Pages:** Nastavení → *Sdílení mezi telefony* → *Vložit konfiguraci Firebase* – bere JS blok z konzole i JSON, uloží se jen do tohoto telefonu.
+
+Web API key Firebase není tajemství (je v každé webové appce), přístup hlídají pravidla + neuhodnutelný kód klubu.
+
+### Používání
+
+1. Jeden trenér v Nastavení dá *Vygenerovat* kód klubu a *Sdílet* ho kolegům (24 znaků).
+2. Kolegové kód vloží do stejného pole. Kód platí pro oba týmy, každý tým má v cloudu vlastní dokument.
+3. **⬆ Nahrát do cloudu** pošle kompletní stav aktivního týmu (kádr, sestavy, zápasy, formace, nastavení). **⬇ Stáhnout z cloudu** ukáže náhled „teď / po stažení“ a po potvrzení přepíše telefon.
+4. Appka hlídá přepsání: když je v cloudu novější verze, než jsi naposledy stáhl, nahrání chce potvrzení. Poslední nahrání vyhrává – žádné slučování.
+
+Doporučený rytmus: kdo připravuje sestavu, nahraje; kdo jede na zápas, před ním stáhne a po zápase nahraje. Během zápasu ovládá hodiny jeden telefon. Automatická synchronizace se slučováním eventů je možná další fáze.
+
+Firebase SDK se načítá až při prvním použití synchronizace (dynamický import), takže offline start i velikost úvodního bundlu zůstávají – bez nakonfigurovaného Firebase appka pořád nedělá žádný síťový request.
+
 ## Struktura
 
 ```
@@ -65,6 +94,8 @@ src/
   lib/rotation.ts   proposeRotation, cyclePairOff, playSecondsSince, rotationAnchor, computeLoad
   hooks/useNow.ts   1 s tick jen pro překreslení + okamžitý re-render při visibilitychange
   hooks/useWakeLock.ts  navigator.wakeLock s re-requestem po návratu do popředí
+  lib/cloud.ts      Firebase Firestore snapshot sync (kód klubu, anonymní auth, lazy import)
+  lib/team.ts       tým A/B – klíč storage, migrace, čtení kádru druhého týmu
   lib/id.ts         generátor id (randomUUID s fallbackem pro http LAN)
   components/       TabBar, RoleChip, Modal (bottom sheet, Btn, Confirm), PlayerEditor,
                     Pitch (SVG), SlotMarker, BenchTile, FormationModal, LineupsModal, NamePrompt,

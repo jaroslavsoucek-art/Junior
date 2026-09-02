@@ -61,6 +61,11 @@ export type Settings = {
   defaultHalvesCount: number;
   defaultRotationIntervalMin: number;
   wakeLockNoticeShown: boolean;
+  // Cloud sync (Firebase) – volitelné
+  clubCode?: string; // sdílený kód klubu
+  deviceName?: string; // jméno tohoto telefonu v cloudu („Jarda iPhone“)
+  lastUploadAt?: number; // kdy tento telefon naposledy nahrál
+  lastDownloadAt?: number; // kdy naposledy stáhl (updatedAt stažené verze)
 };
 
 export const ROLE_LABEL: Record<PositionRole, string> = {

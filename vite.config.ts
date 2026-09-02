@@ -49,6 +49,10 @@ export default defineConfig({
       },
     }),
   ],
+  build: {
+    // firebase/firestore is one big lazily-loaded chunk – that is intended
+    chunkSizeWarningLimit: 700,
+  },
   test: {
     include: ['src/**/*.test.ts'],
     environment: 'node',

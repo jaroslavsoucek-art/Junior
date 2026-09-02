@@ -3,6 +3,7 @@ import { ACTIVE_TEAM, pickData, useStore, type AppData } from '../store';
 import { switchTeamAndReload, TEAMS } from '../lib/team';
 import { Btn, Confirm, Modal } from '../components/Modal';
 import { buildExport, exportFileName, parseImport, previewImport, type ImportPreview } from '../lib/exportImport';
+import { CloudSync } from '../components/CloudSync';
 
 export function SettingsScreen({ onBack }: { onBack: () => void }) {
   const settings = useStore((s) => s.settings);
@@ -103,6 +104,10 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
           value={settings.defaultRotationIntervalMin}
           onChange={(v) => updateSettings({ defaultRotationIntervalMin: num(v, 1, 30) })}
         />
+      </Section>
+
+      <Section title="Sdílení mezi telefony (cloud)">
+        <CloudSync onNotice={(m) => flash(setNotice, m)} />
       </Section>
 
       <Section title="Záloha dat">
