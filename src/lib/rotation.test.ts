@@ -1,65 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { absorbSubs, cyclePairOff, planRotationGroups, proposeFromPlan, proposeRotation, sanitizeGroups, setRotationPartner, type RotationInput } from './rotation';
+import { planRotationGroups, sanitizeGroups, setRotationPartner } from './rotation';
 import { SEED_FORMATIONS, SEED_PLAYERS } from '../data/seed';
 
 const f = SEED_FORMATIONS[0]; // 2-3-2: gk, 1 DEF, 2 DEF, 3 MID_W, 4 MID_C, 5 MID_W, 6 FWD, 7 FWD
 const id = (n: number | 'gk') => `${f.id}-${n}`;
-const base: RotationInput = {
-  formation: f,
-  onPitch: { [id('gk')]: 'adis', [id(1)]: 'jony', [id(2)]: 'pilka', [id(3)]: 'albi', [id(4)]: 'sima', [id(5)]: 'honza', [id(6)]: 'ondra', [id(7)]: 'marian' },
-  benchIds: ['nik', 'adri', 'korci', 'damian'],
-  players: SEED_PLAYERS,
-  // priority = time the player last left the pitch (or came on) – lower waits longer / has been on the pitch longer
-  priority: { adis: 100, jony: 100, pilka: 100, albi: 100, sima: 100, honza: 300, ondra: 100, marian: 100 },
-  rotateGoalkeeper: false,
-};
-
-describe('proposeRotation', () => {
-  it('one pair per field-capable bench player, on their positions', () => {
-    const pairs = proposeRotation(base);
-    // nik is a pure GK and GK is not rotated → skipped; 3 pairs
-    expect(pairs).toHaveLength(3);
-    const byOn = Object.fromEntries(pairs.map((p) => [p.onPlayerId, p]));
-    expect(['jony', 'pilka']).toContain(byOn.adri.offPlayerId); // DEF for DEF
-    expect(byOn.korci.offPlayerId).toBe('sima'); // MID_C for MID_C
-    expect(byOn.damian.offPlayerId).toBe('albi'); // MID_W: albi (100) has been on the pitch longer than honza (300)
-    expect(pairs.every((p) => p.slotId !== id('gk'))).toBe(true);
-  });
-
-  it('rotates the goalkeeper when enabled', () => {
-    const pairs = proposeRotation({ ...base, rotateGoalkeeper: true });
-    expect(pairs.find((p) => p.onPlayerId === 'nik')?.offPlayerId).toBe('adis');
-  });
-
-  it('fit is judged by the slot role, not by who stands there', () => {
-    const pairs = proposeRotation({ ...base, benchIds: ['kristian'], onPitch: { ...base.onPitch, [id(3)]: 'sima', [id(4)]: 'korci', [id(5)]: 'jara' }, priority: { ...base.priority, korci: 900, jara: 500, sima: 100 } });
-    // kristian (MID_W) → both wing slots fit exactly; sima (100) has been on longer than jara (500)
-    expect(pairs[0].offPlayerId).toBe('sima');
-    expect(pairs[0].slotId).toBe(id(3));
-  });
-
-  it('a defender with no defender on the pitch falls back to the midfield group, then anyone', () => {
-    const noDef = { ...base.onPitch, [id(1)]: 'korci', [id(2)]: 'kristian' };
-    const pairs = proposeRotation({ ...base, onPitch: noDef, benchIds: ['adri'], priority: { ...base.priority, korci: 100, kristian: 100, marian: 2000 } });
-    // slot roles: DEF slots still exist (occupied by midfielders) → exact fit by slot role wins
-    expect([id(1), id(2)]).toContain(pairs[0].slotId);
-  });
-
-  it('longest-waiting bench player is proposed first', () => {
-    const pairs = proposeRotation({ ...base, priority: { ...base.priority, adri: 400, damian: 0, korci: 200 } });
-    expect(pairs.map((p) => p.onPlayerId)).toEqual(['damian', 'korci', 'adri']);
-  });
-
-  it('cyclePairOff moves to the next compatible slot, skipping slots used by other pairs', () => {
-    const pairs = proposeRotation(base);
-    const i = pairs.findIndex((p) => p.onPlayerId === 'damian'); // MID_W → albi
-    const cycled = cyclePairOff(base, pairs, i);
-    expect(cycled[i].offPlayerId).toBe('honza'); // other MID_W (sima's slot is used by korci)
-    const again = cyclePairOff(base, cycled, i);
-    expect(['jony', 'pilka', 'ondra', 'marian']).toContain(again[i].offPlayerId); // then group-less fallbacks
-  });
-});
-
 describe('rotation plan', () => {
   const starting = { [id('gk')]: 'adis', [id(1)]: 'jony', [id(2)]: 'pilka', [id(3)]: 'albi', [id(4)]: 'sima', [id(5)]: 'honza', [id(6)]: 'ondra', [id(7)]: 'marian' };
 
@@ -82,26 +26,8 @@ describe('rotation plan', () => {
     expect(Object.values(g).flat()).not.toContain('adri');
   });
 
-  it('proposeFromPlan pairs planned partners and falls back for unplanned bench players', () => {
-    const groups = { [id(1)]: ['jony', 'adri'], [id(4)]: ['sima', 'korci'] };
-    const input = { ...base, benchIds: ['adri', 'korci', 'damian'] };
-    const pairs = proposeFromPlan(input, groups);
-    expect(pairs.find((p) => p.onPlayerId === 'adri')).toMatchObject({ offPlayerId: 'jony', slotId: id(1) });
-    expect(pairs.find((p) => p.onPlayerId === 'korci')).toMatchObject({ offPlayerId: 'sima', slotId: id(4) });
-    const dam = pairs.find((p) => p.onPlayerId === 'damian')!;
-    expect([id(3), id(5)]).toContain(dam.slotId); // winger → a wing slot not used by the plan
-  });
 
-  it('after the swap the group member on the bench is the one who came off', () => {
-    const groups = { [id(1)]: ['jony', 'adri'] };
-    const swapped = { ...base, onPitch: { ...base.onPitch, [id(1)]: 'adri' }, benchIds: ['jony'] };
-    expect(proposeFromPlan(swapped, groups)[0]).toMatchObject({ onPlayerId: 'jony', offPlayerId: 'adri' });
-  });
 
-  it('absorbSubs adds both players to the slot group', () => {
-    const g = absorbSubs({}, [{ onPlayerId: 'adri', offPlayerId: 'jony', slotId: id(1) }]);
-    expect(g[id(1)].sort()).toEqual(['adri', 'jony']);
-  });
 
   it('sanitizeGroups drops unknown slots and absent players', () => {
     const g = sanitizeGroups({ [id(1)]: ['jony', 'ghost'], 'other-slot': ['x'] }, f, ['jony']);

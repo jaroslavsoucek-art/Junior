@@ -40,8 +40,8 @@ export type Match = {
   halvesCount: number; // default 2 (některé soutěže 3× 20)
   availablePlayerIds: string[];
   startingLineupId: string | null;
-  events: MatchEvent[]; // event-sourced
-  status: 'planned' | 'live' | 'finished';
+  events: MatchEvent[]; // historické, appka už průběh zápasu nevede (zůstává kvůli kompatibilitě dat)
+  status: 'planned' | 'finished'; // připraveno / odehráno
   // Rotace lavičky: každých N minut appka navrhne tolik střídání, kolik je hráčů na lavičce.
   rotationIntervalMin: number; // default 5
   rotateGoalkeeper: boolean; // default false – brankář se netočí

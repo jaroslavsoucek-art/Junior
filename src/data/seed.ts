@@ -48,7 +48,7 @@ export const SEED_PLAYERS_A: Player[] = A_RAW.map(([name, roles]) => ({
 }));
 
 /** Bump when a seed roster changes so stores without own data pick it up (see store migrate). */
-export const SEED_REVISION = 4;
+export const SEED_REVISION = 5;
 
 export const SEED_PLAYERS_BY_TEAM = { A: SEED_PLAYERS_A, B: SEED_PLAYERS_B };
 /** @deprecated use SEED_PLAYERS_BY_TEAM – kept for tests */

@@ -8,7 +8,6 @@ import { Segmented } from '../components/Segmented';
 import { IconChevronDown, IconChevronRight, IconGear, IconPlus } from '../components/icons';
 import { PlayerEditor } from '../components/PlayerEditor';
 import { SettingsScreen } from './SettingsScreen';
-import { appearances, formatAppearances } from '../lib/season';
 import { otherTeam, readTeamPlayers } from '../lib/team';
 import { SEED_PLAYERS_BY_TEAM } from '../data/seed';
 import { ALL_ROLES, ROLE_LABEL, type Player, type PositionRole } from '../types';
@@ -23,7 +22,6 @@ const roleRank = (p: Player) => {
 
 export function RosterScreen() {
   const players = useStore((s) => s.players);
-  const matches = useStore((s) => s.matches);
   const addPlayer = useStore((s) => s.addPlayer);
   const updatePlayer = useStore((s) => s.updatePlayer);
 
@@ -34,8 +32,6 @@ export function RosterScreen() {
   const [pickFromOther, setPickFromOther] = useState(false);
   const other = otherTeam(ACTIVE_TEAM);
 
-  const apps = useMemo(() => appearances(matches), [matches]);
-  const finished = matches.filter((m) => m.status === 'finished').length;
   const byName = (a: Player, b: Player) => a.name.localeCompare(b.name, 'cs');
 
   const active = useMemo(() => {
@@ -56,7 +52,7 @@ export function RosterScreen() {
     <div className="px-[18px] pb-[100px] pt-5">
       <ScreenHeader
         title="Kádr"
-        subtitle={`${active.length} hráčů · ${finished} ${finished === 1 ? 'zápas odehraný' : finished >= 2 && finished <= 4 ? 'zápasy odehrané' : 'zápasů odehraných'}`}
+        subtitle={`SK Junior Praha · ${active.length} hráčů v kádru`}
         right={
           <IconButton onClick={() => setShowSettings(true)} label="Nastavení">
             <IconGear />
@@ -80,7 +76,7 @@ export function RosterScreen() {
           )}
           <ul className="flex flex-col gap-2">
             {g.items.map((p) => (
-              <PlayerRow key={p.id} player={p} apps={apps[p.id] ?? 0} onTap={() => setEditing(p)} />
+              <PlayerRow key={p.id} player={p} onTap={() => setEditing(p)} />
             ))}
           </ul>
         </section>
@@ -108,7 +104,6 @@ export function RosterScreen() {
                     <button type="button" onClick={() => setEditing(p)} className="tap flex min-h-14 w-full items-center gap-3 rounded-2xl border border-line px-3 text-left">
                       {r ? <RoleSquare role={r} size={34} /> : <span className="size-[34px]" />}
                       <span className="min-w-0 flex-1 truncate text-[15px] font-bold text-ink">{p.name}</span>
-                      <span className="tabular text-[12px] font-bold text-muted">{formatAppearances(apps[p.id])}</span>
                     </button>
                   </li>
                 );
@@ -155,7 +150,7 @@ export function RosterScreen() {
   );
 }
 
-function PlayerRow({ player, apps, onTap }: { player: Player; apps: number; onTap: () => void }) {
+function PlayerRow({ player, onTap }: { player: Player; onTap: () => void }) {
   const role = primaryRole(player);
   const guest = player.team && player.team !== ACTIVE_TEAM;
   return (
@@ -168,8 +163,7 @@ function PlayerRow({ player, apps, onTap }: { player: Player; apps: number; onTa
             {guest && <TeamTag team={player.team!} />}
           </span>
           <span className="flex flex-wrap items-center gap-1.5 text-[12px] font-semibold text-muted">
-            {player.roles.length === 0 && <NoRoleChip />}
-            <span className="tabular">{formatAppearances(apps)}</span>
+            {player.roles.length === 0 ? <NoRoleChip /> : <span>{player.roles.map((r) => ROLE_LABEL[r]).join(' · ')}</span>}
           </span>
         </span>
         <IconChevronRight className="text-chev" />

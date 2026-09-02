@@ -5,7 +5,7 @@ import { sanitizeGroups, type RotationGroups } from '../lib/rotation';
 import type { StartingLineup } from '../lib/match';
 import { ROLE_SHORT, type Match, type Player } from '../types';
 
-/** Pre-match plan rows: bench player ↔ slot he rotates into; tap cycles slots (best fit first, then "netočí se"). */
+/** Plán střídání: hráč z lavičky ↔ post, na který se točí; tap přepíná posty (nejlepší fit první, pak „netočí se“). */
 export function RotationPlan({ match, starting, players, onSet, onAuto, locked }: { match: Match; starting: StartingLineup; players: Player[]; onSet: (playerId: string, slotId: string | null) => void; onAuto: () => void; locked: boolean }) {
   const formation = starting.formation;
   if (!formation) return null;

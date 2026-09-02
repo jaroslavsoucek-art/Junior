@@ -1,16 +1,15 @@
-import { IconClipboard, IconFormation, IconTimer, IconUsers } from './icons';
+import { IconClipboard, IconFormation, IconUsers } from './icons';
 
-export type TabId = 'roster' | 'match' | 'lineup' | 'live';
+export type TabId = 'roster' | 'match' | 'lineup';
 
 const TABS: { id: TabId; label: string; Icon: typeof IconUsers }[] = [
   { id: 'roster', label: 'Kádr', Icon: IconUsers },
   { id: 'match', label: 'Zápas', Icon: IconClipboard },
   { id: 'lineup', label: 'Sestava', Icon: IconFormation },
-  { id: 'live', label: 'Live', Icon: IconTimer },
 ];
 
 /** Floating navigation pill (design: blur, 22 px radius, active item filled). */
-export function TabBar({ active, onChange, liveRunning }: { active: TabId; onChange: (t: TabId) => void; liveRunning: boolean }) {
+export function TabBar({ active, onChange }: { active: TabId; onChange: (t: TabId) => void }) {
   return (
     <nav
       className="no-touch-fx pointer-events-none absolute inset-x-4 z-30 flex"
@@ -23,20 +22,16 @@ export function TabBar({ active, onChange, liveRunning }: { active: TabId; onCha
       >
         {TABS.map(({ id, label, Icon }) => {
           const isActive = id === active;
-          const live = id === 'live' && liveRunning && !isActive;
           return (
             <button
               key={id}
               type="button"
               onClick={() => onChange(id)}
               aria-current={isActive ? 'page' : undefined}
-              className={`tap relative flex min-h-[52px] flex-1 flex-col items-center justify-center gap-[3px] rounded-2xl text-[10px] font-bold ${
-                isActive ? 'bg-btn text-btn-fg' : live ? 'text-accent-text' : 'text-muted'
-              }`}
+              className={`tap relative flex min-h-[52px] flex-1 flex-col items-center justify-center gap-[3px] rounded-2xl text-[10px] font-bold ${isActive ? 'bg-btn text-btn-fg' : 'text-muted'}`}
             >
               <Icon />
-              <span className={live ? 'font-extrabold' : ''}>{label}</span>
-              {live && <span className="absolute right-[18px] top-1.5 size-[7px] rounded-full bg-accent" aria-hidden />}
+              <span>{label}</span>
             </button>
           );
         })}

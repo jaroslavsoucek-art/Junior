@@ -5,9 +5,8 @@ import { MatchForm } from '../components/MatchForm';
 import { LineupPreview } from '../components/LineupPreview';
 import { RotationPlan } from '../components/RotationPlan';
 import { DetailHeader, ScreenHeader } from '../components/ScreenHeader';
-import { IconChevronRight, IconTimer, IconTrash } from '../components/icons';
+import { IconCheck, IconChevronRight, IconTrash } from '../components/icons';
 import { formatMatchDate, MIN_PLAYERS, startingLineup, todayISO } from '../lib/match';
-import { appeared } from '../lib/minutes';
 import { sanitizeGroups } from '../lib/rotation';
 import { ROLE_SHORT, type Match, type Player, type PositionRole } from '../types';
 
@@ -36,7 +35,7 @@ function MatchList() {
   const sorted = useMemo(
     () =>
       [...matches].sort((a, b) => {
-        const rank = (m: Match) => (m.status === 'live' ? 0 : m.status === 'planned' ? 1 : 2);
+        const rank = (m: Match) => (m.status === 'planned' ? 0 : 1);
         return rank(a) - rank(b) || b.date.localeCompare(a.date);
       }),
     [matches],
@@ -47,7 +46,7 @@ function MatchList() {
     <div className="px-[18px] pb-[100px] pt-5">
       <ScreenHeader
         title="Zápasy"
-        subtitle="Docházka → sestava → rotace → Live"
+        subtitle="Docházka → sestava → plán střídání"
         showLogo={false}
         right={
           <Btn kind="primary" className="min-h-12 px-4" onClick={() => setCreating(true)}>
@@ -59,27 +58,7 @@ function MatchList() {
       <ul className="flex flex-col gap-2.5">
         {sorted.map((m) => {
           const st = startingLineup(m, lineups, formations, players);
-          const steps = [m.availablePlayerIds.length >= MIN_PLAYERS, st.filled === 8, Object.keys(m.rotationGroups ?? {}).length > 0, m.status !== 'planned'];
-          if (m.status === 'live') {
-            return (
-              <li key={m.id}>
-                <button type="button" onClick={() => openMatchDetail(m.id)} className="tap flex min-h-[92px] w-full flex-col gap-2.5 rounded-[20px] bg-accent px-4 py-3.5 text-left text-white" style={{ boxShadow: '0 6px 18px rgba(164,23,42,0.24)' }}>
-                  <span className="flex w-full items-center justify-between gap-2.5">
-                    <span className="truncate text-[18px] font-extrabold tracking-[-0.01em]">vs {m.opponent}</span>
-                    <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/20 px-2.5 py-1">
-                      <span className="size-[7px] rounded-full bg-gold" />
-                      <span className="text-[11px] font-extrabold tracking-[0.06em]">HRAJE SE</span>
-                    </span>
-                  </span>
-                  <span className="flex flex-wrap items-center gap-3 text-[12px] font-bold opacity-90">
-                    <span>{formatMatchDate(m.date)}</span>
-                    <span>k dispozici {m.availablePlayerIds.length}</span>
-                    <span>{m.events.filter((e) => e.type === 'SUB').length} střídání</span>
-                  </span>
-                </button>
-              </li>
-            );
-          }
+          const steps = [m.availablePlayerIds.length >= MIN_PLAYERS, st.filled === 8, Object.keys(m.rotationGroups ?? {}).length > 0, m.status === 'finished'];
           return (
             <li key={m.id} className="flex gap-2">
               <button type="button" onClick={() => openMatchDetail(m.id)} className="tap flex min-h-20 min-w-0 flex-1 flex-col gap-2 rounded-[20px] border border-line bg-surface px-4 py-3.5 text-left">
@@ -88,7 +67,7 @@ function MatchList() {
                   <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-extrabold tracking-[0.06em] ${m.status === 'planned' ? 'bg-primary/10 text-heading' : 'bg-ink/5 text-muted'}`}>{m.status === 'planned' ? 'PŘIPRAVENO' : 'DOHRÁNO'}</span>
                 </span>
                 <span className="text-[12px] font-semibold text-muted">
-                  {formatMatchDate(m.date)} · {m.status === 'planned' ? `k dispozici ${m.availablePlayerIds.length} · sestava ${st.filled}/8` : `hrálo ${appeared(m.events).size} z ${m.availablePlayerIds.length}`}
+                  {formatMatchDate(m.date)} · k dispozici {m.availablePlayerIds.length} · sestava {st.filled}/8
                 </span>
                 {m.status === 'planned' && (
                   <span className="flex w-full gap-1">
@@ -161,7 +140,7 @@ function MatchDetail({ match, onBack }: { match: Match; onBack: () => void }) {
   const benchIds = match.availablePlayerIds.filter((id) => !onPitchIds.has(id) && players.some((p) => p.id === id && p.active));
   const plannedCount = benchIds.filter((id) => Object.values(groups).some((g) => g.includes(id))).length;
   const ready = starting.filled === 8 && availableCount >= MIN_PLAYERS;
-  const steps = [availableCount >= MIN_PLAYERS, starting.filled === 8, plannedCount > 0 || benchIds.length === 0, match.status !== 'planned'];
+  const steps = [availableCount >= MIN_PLAYERS, starting.filled === 8, plannedCount > 0 || benchIds.length === 0, match.status === 'finished'];
 
   // Attendance: absent players first so they stay visible when collapsed, then present; collapsed shows 5 + "+N".
   const ordered = useMemo(() => [...squad.filter((p) => !available.has(p.id)), ...squad.filter((p) => available.has(p.id))], [squad, match.availablePlayerIds]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -316,7 +295,7 @@ function MatchDetail({ match, onBack }: { match: Match; onBack: () => void }) {
           <button type="button" onClick={() => setPlanOpen(true)} className="tap mb-3.5 flex min-h-[60px] w-full items-center justify-between gap-2.5 rounded-[22px] border border-line bg-surface px-4 text-left">
             <span className="flex items-center gap-2.5">
               <StepBadge n={3} tone={plannedCount > 0 ? 'primary' : 'muted'} />
-              <span className="text-[16px] font-bold text-ink">Plán rotace</span>
+              <span className="text-[16px] font-bold text-ink">Plán střídání</span>
             </span>
             <span className="flex items-center gap-2">
               <span className="text-[12px] font-bold text-muted">
@@ -327,16 +306,9 @@ function MatchDetail({ match, onBack }: { match: Match; onBack: () => void }) {
           </button>
         )}
 
-        {match.status !== 'planned' && (
-          <Btn
-            kind="primary"
-            className="min-h-[60px] w-full rounded-[20px] text-[17px] font-extrabold"
-            onClick={() => {
-              act.setActiveMatch(match.id);
-              act.setTab('live');
-            }}
-          >
-            {match.status === 'live' ? 'Zpět do zápasu' : 'Zobrazit výsledek'}
+        {locked && (
+          <Btn kind="default" className="min-h-[52px] w-full rounded-[18px]" onClick={() => act.setMatchStatus(match.id, 'planned')}>
+            Vrátit do přípravy
           </Btn>
         )}
         {!locked && (
@@ -346,28 +318,24 @@ function MatchDetail({ match, onBack }: { match: Match; onBack: () => void }) {
         )}
       </div>
 
-      {/* sticky CTA on a scrim */}
+      {/* sticky CTA on a scrim: mark the match as played – locks attendance, lineup and plan */}
       {match.status === 'planned' && (
         <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col gap-2 px-4 pb-4 pt-[34px]" style={{ background: 'linear-gradient(to bottom, transparent 0%, var(--bg) 22%, var(--bg) 100%)' }}>
           <button
             type="button"
             disabled={!ready}
-            onClick={() => {
-              act.setActiveMatch(match.id);
-              act.setTab('live');
-            }}
-            className="tap pointer-events-auto flex min-h-[60px] w-full items-center justify-center gap-2.5 rounded-[20px] bg-accent text-white disabled:opacity-40"
-            style={ready ? { boxShadow: '0 8px 24px rgba(164,23,42,0.3)' } : undefined}
+            onClick={() => act.setMatchStatus(match.id, 'finished')}
+            className="tap pointer-events-auto flex min-h-[60px] w-full items-center justify-center gap-2.5 rounded-[20px] bg-btn text-btn-fg disabled:opacity-40"
           >
-            <IconTimer size={20} />
-            <span className="text-[17px] font-extrabold tracking-[-0.01em]">Přejít do zápasu</span>
+            <IconCheck size={20} />
+            <span className="text-[17px] font-extrabold tracking-[-0.01em]">Zápas odehrán</span>
           </button>
           {!ready && <p className="pointer-events-auto text-center text-[12px] font-semibold text-muted">Nejdřív doplň docházku a kompletní startovní osmičku.</p>}
         </div>
       )}
 
       {planOpen && starting.formation && (
-        <Modal title="Plán rotace" subtitle="Kdo za koho se točí · v zápase pak stačí jedno tlačítko" onClose={() => setPlanOpen(false)}>
+        <Modal title="Plán střídání" subtitle="Kdo za koho se točí – papír na zápas" onClose={() => setPlanOpen(false)}>
           <RotationPlan match={match} starting={starting} players={players} locked={locked} onSet={(pid, slotId) => act.setRotationPartner(match.id, pid, slotId)} onAuto={() => act.autoPlanRotation(match.id)} />
           <Btn kind="primary" className="mt-3.5 w-full" onClick={() => setPlanOpen(false)}>
             Hotovo

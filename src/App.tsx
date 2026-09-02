@@ -4,7 +4,6 @@ import { useTheme } from './hooks/useTheme';
 import { RosterScreen } from './screens/RosterScreen';
 import { MatchScreen } from './screens/MatchScreen';
 import { LineupScreen } from './screens/LineupScreen';
-import { LiveScreen } from './screens/LiveScreen';
 
 export default function App() {
   const tab = useStore((s) => s.tab);
@@ -14,7 +13,6 @@ export default function App() {
   const matchDetailId = useStore((s) => s.matchDetailId);
   const lineupView = useStore((s) => s.lineupView);
   const theme = useStore((s) => s.settings.theme ?? 'light');
-  const liveRunning = useStore((s) => s.matches.some((m) => m.status === 'live'));
   useTheme(theme);
 
   // Tapping a tab always lands on its overview (list); deep links open the detail/editor directly.
@@ -24,8 +22,8 @@ export default function App() {
     setTab(t);
   };
 
-  // Floating nav only on overview screens; detail / editor / Live use their own back buttons and need the height.
-  const showNav = (tab === 'roster') || (tab === 'match' && !matchDetailId) || (tab === 'lineup' && lineupView === 'list');
+  // Floating nav only on overview screens; detail and editor use their own back buttons and need the height.
+  const showNav = tab === 'roster' || (tab === 'match' && !matchDetailId) || (tab === 'lineup' && lineupView === 'list');
 
   return (
     <div className="relative flex h-full flex-col bg-canvas text-ink">
@@ -33,9 +31,8 @@ export default function App() {
         {tab === 'roster' && <RosterScreen />}
         {tab === 'match' && <MatchScreen />}
         {tab === 'lineup' && <LineupScreen />}
-        {tab === 'live' && <LiveScreen />}
       </main>
-      {showNav && <TabBar active={tab} onChange={onTab} liveRunning={liveRunning} />}
+      {showNav && <TabBar active={tab} onChange={onTab} />}
     </div>
   );
 }

@@ -23,7 +23,6 @@ import { todayISO } from '../lib/match';
 import { Btn } from '../components/Modal';
 import { IconArrowRight, IconBack, IconChevronDown } from '../components/icons';
 import { orderBench, roleFit } from '../lib/lineup';
-import { appearances, formatAppearances } from '../lib/season';
 import type { FormationSlot, Player } from '../types';
 
 type Sel = { kind: 'bench'; playerId: string } | { kind: 'slot'; slotId: string } | null;
@@ -47,7 +46,7 @@ function LineupEditor() {
   const [dragging, setDragging] = useState<string | null>(null);
 
   const formation = formations.find((f) => f.id === draft.formationId) ?? formations[0];
-  const season = useMemo(() => appearances(matches), [matches]);
+  const season = useMemo(() => ({}) as Record<string, number>, []);
   const playerById = useMemo(() => new Map(players.map((p) => [p.id, p])), [players]);
 
   // Bench pool: active players (or the match's available players) not on the pitch.
@@ -247,7 +246,7 @@ function LineupEditor() {
               </button>
             )}
             {bench.map((p) => (
-              <DraggableTile key={p.id} player={p} sub={formatAppearances(season[p.id])} visual={tileVisual(p)} onTap={() => tapBench(p.id)} />
+              <DraggableTile key={p.id} player={p} visual={tileVisual(p)} onTap={() => tapBench(p.id)} />
             ))}
             {bench.length === 0 && <p className="self-center px-2 text-[13px] text-muted">Všichni dostupní hráči jsou na hřišti.</p>}
             {filled > 0 && (
@@ -331,12 +330,11 @@ function DraggableSlot({ slot, player, visual, onTap }: { slot: FormationSlot; p
   );
 }
 
-function DraggableTile({ player, sub, visual, onTap }: { player: Player; sub: string; visual: TileVisual; onTap: () => void }) {
+function DraggableTile({ player, visual, onTap }: { player: Player; visual: TileVisual; onTap: () => void }) {
   const { setNodeRef, listeners, attributes, isDragging } = useDraggable({ id: `bench:${player.id}` });
   return (
     <BenchTile
       player={player}
-      sub={sub}
       visual={visual}
       onTap={onTap}
       nodeRef={setNodeRef}

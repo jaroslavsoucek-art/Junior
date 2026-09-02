@@ -1,14 +1,13 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { Formation, Lineup, Match, MatchEvent, Player, Settings } from '../types';
+import type { Formation, Lineup, Match, Player, Settings } from '../types';
 import type { TabId } from '../components/TabBar';
 import { DEFAULT_FORMATION_ID, SEED_FORMATIONS, SEED_PLAYERS_BY_TEAM, SEED_REVISION } from '../data/seed';
 import { getActiveTeam, migrateLegacyStorage, storageKeyFor, type Team } from '../lib/team';
 import { newId } from '../lib/id';
 import { remapAssignments, type Assignments } from '../lib/lineup';
-import { withoutLastBatch } from '../lib/minutes';
 import { startingLineup } from '../lib/match';
-import { absorbSubs, planRotationGroups, setRotationPartner as setPartner, type RotationPair } from '../lib/rotation';
+import { planRotationGroups, setRotationPartner as setPartner } from '../lib/rotation';
 
 export type AppData = {
   players: Player[];
@@ -34,12 +33,10 @@ export type MatchInput = Pick<Match, 'opponent' | 'date' | 'rotateGoalkeeper'>;
 
 export type AppState = AppData & {
   draft: Draft;
-  tab: TabId; // persisted so a killed app reopens where it was (Live during a match)
-  activeMatchId: string | null; // match used by Live
+  tab: TabId; // persisted so a killed app reopens where it was
   matchDetailId: string | null; // match open in the Zápas tab (null = list)
   lineupView: 'list' | 'editor'; // Sestava tab: saved lineups first, editor behind
   setTab: (tab: TabId) => void;
-  setActiveMatch: (id: string | null) => void;
   openMatchDetail: (id: string | null) => void;
   setLineupView: (v: 'list' | 'editor') => void;
 
@@ -92,13 +89,8 @@ export type AppState = AppData & {
   setRotationPartner: (matchId: string, playerId: string, slotId: string | null) => void;
   autoPlanRotation: (matchId: string) => void;
 
-  // Live – every action appends events; minutes are always derived from them
-  startMatch: (matchId: string) => void; // status live + PLAYER_ON for the starting eight
-  substitute: (matchId: string, subs: RotationPair[]) => void; // one batch, same `at`
-  playerOn: (matchId: string, playerId: string, slotId: string) => void;
-  playerOff: (matchId: string, playerId: string) => void;
-  undoLastEvent: (matchId: string) => void; // removes the whole last batch
-  finishMatch: (matchId: string) => void;
+  /** Odehráno ↔ připraveno. Odehraný zápas má docházku, sestavu i plán zamčené. */
+  setMatchStatus: (matchId: string, status: Match['status']) => void;
 };
 
 migrateLegacyStorage();
@@ -168,16 +160,14 @@ export const useStore = create<AppState>()(
       ...seedData(),
       draft: emptyDraft(),
       tab: 'roster',
-      activeMatchId: null,
       matchDetailId: null,
       lineupView: 'list',
       setTab: (tab) => set({ tab }),
-      setActiveMatch: (id) => set({ activeMatchId: id }),
       openMatchDetail: (id) => set({ matchDetailId: id }),
       setLineupView: (v) => set({ lineupView: v }),
 
-      replaceAll: (data) => set(() => ({ ...data, draft: emptyDraft(data.formations), activeMatchId: null })),
-      resetToSeed: () => set(() => ({ ...seedData(), draft: emptyDraft(), activeMatchId: null })),
+      replaceAll: (data) => set(() => ({ ...data, draft: emptyDraft(data.formations), matchDetailId: null })),
+      resetToSeed: () => set(() => ({ ...seedData(), draft: emptyDraft(), matchDetailId: null })),
 
       addPlayer: (player) =>
         set((s) => (s.players.some((p) => p.id === player.id) ? {} : { players: [...s.players, { ...player, active: true }] })),
@@ -297,7 +287,6 @@ export const useStore = create<AppState>()(
               rotationGroups: {},
             },
           ],
-          activeMatchId: id,
           matchDetailId: id,
         }));
         return id;
@@ -308,7 +297,6 @@ export const useStore = create<AppState>()(
         set((s) => ({
           matches: s.matches.filter((m) => m.id !== id),
           lineups: s.lineups.filter((l) => l.matchId !== id),
-          activeMatchId: s.activeMatchId === id ? null : s.activeMatchId,
           matchDetailId: s.matchDetailId === id ? null : s.matchDetailId,
           draft: s.draft.matchId === id ? emptyDraft(s.formations) : s.draft,
         })),
@@ -385,41 +373,7 @@ export const useStore = create<AppState>()(
         patchMatch(set, matchId, (m) => ({ ...m, rotationGroups: autoGroups(m, s) }));
       },
 
-      startMatch: (matchId) => {
-        const s = get();
-        const match = s.matches.find((m) => m.id === matchId);
-        if (!match || match.status !== 'planned') return;
-        const starting = startingLineup(match, s.lineups, s.formations, s.players);
-        const at = Date.now();
-        const events: MatchEvent[] = Object.entries(starting.assignments)
-          .filter((e): e is [string, string] => !!e[1])
-          .map(([slotId, playerId]) => ({ type: 'PLAYER_ON', at, playerId, slotId }));
-        patchMatch(set, matchId, (m) => ({
-          ...m,
-          status: 'live',
-          events: [...m.events, ...events],
-          // no plan prepared → plan now, so the one-button rotation works anyway
-          rotationGroups: Object.keys(m.rotationGroups ?? {}).length ? m.rotationGroups : autoGroups(m, s),
-        }));
-        set({ activeMatchId: matchId, tab: 'live' });
-      },
-      substitute: (matchId, subs) =>
-        patchMatch(set, matchId, (m) => {
-          if (m.status !== 'live' || subs.length === 0) return m;
-          const at = Date.now();
-          return {
-            ...m,
-            events: [...m.events, ...subs.map((x) => ({ type: 'SUB' as const, at, ...x }))],
-            rotationGroups: absorbSubs(m.rotationGroups ?? {}, subs),
-          };
-        }),
-      playerOn: (matchId, playerId, slotId) =>
-        patchMatch(set, matchId, (m) => (m.status === 'live' ? { ...m, events: [...m.events, { type: 'PLAYER_ON', at: Date.now(), playerId, slotId }] } : m)),
-      playerOff: (matchId, playerId) =>
-        patchMatch(set, matchId, (m) => (m.status === 'live' ? { ...m, events: [...m.events, { type: 'PLAYER_OFF', at: Date.now(), playerId }] } : m)),
-      undoLastEvent: (matchId) => patchMatch(set, matchId, (m) => (m.status === 'live' ? { ...m, events: withoutLastBatch(m.events) } : m)),
-      finishMatch: (matchId) =>
-        patchMatch(set, matchId, (m) => (m.status === 'live' ? { ...m, status: 'finished' } : m)),
+      setMatchStatus: (matchId, status) => patchMatch(set, matchId, (m) => ({ ...m, status })),
 
       addFormation: (f) => set((s) => ({ formations: [...s.formations, f] })),
       deleteFormation: (formationId) =>
@@ -446,9 +400,11 @@ export const useStore = create<AppState>()(
        */
       migrate: (persisted, fromVersion) => {
         let s = persisted as Partial<AppData>;
-        if (fromVersion < 4) {
-          // time tracking removed – drop period events from stored matches
-          s = { ...s, matches: (s.matches ?? []).map((m) => ({ ...m, events: (m.events as { type: string }[]).filter((e) => e.type === 'SUB' || e.type === 'PLAYER_ON' || e.type === 'PLAYER_OFF') as Match['events'] })) };
+        if (fromVersion < 5) {
+          // match tracking removed – a match that was "live" counts as played, the Live tab no longer exists
+          const st = persisted as { tab?: string };
+          s = { ...s, matches: (s.matches ?? []).map((m) => ({ ...m, status: ((m.status as string) === 'live' ? 'finished' : m.status) as Match['status'] })) };
+          if (st.tab === 'live') (s as { tab?: TabId }).tab = 'match';
         }
         if (fromVersion < SEED_REVISION) {
           // seed formations: refresh coordinates (slot ids are stable, lineups keep working); custom ones untouched
@@ -458,7 +414,7 @@ export const useStore = create<AppState>()(
         }
         return s as AppState;
       },
-      partialize: (s) => ({ ...pickData(s), draft: s.draft, tab: s.tab, activeMatchId: s.activeMatchId, matchDetailId: s.matchDetailId, lineupView: s.lineupView }),
+      partialize: (s) => ({ ...pickData(s), draft: s.draft, tab: s.tab, matchDetailId: s.matchDetailId, lineupView: s.lineupView }),
     },
   ),
 );
