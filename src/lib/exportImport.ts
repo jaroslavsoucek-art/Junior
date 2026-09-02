@@ -89,6 +89,8 @@ export function parseImport(text: string): ParseResult {
       // Older exports may lack the rotation fields – fill defaults.
       matches: (data.matches as AppData['matches']).map((m) => ({
         ...m,
+        // legacy period events (the app used to track time) are dropped
+        events: (m.events as { type: string }[]).filter((e) => e.type === 'SUB' || e.type === 'PLAYER_ON' || e.type === 'PLAYER_OFF') as AppData['matches'][number]['events'],
         rotationIntervalMin: num(m.rotationIntervalMin, s.defaultRotationIntervalMin),
         rotateGoalkeeper: m.rotateGoalkeeper === true,
         rotationGroups: isObj(m.rotationGroups) ? (m.rotationGroups as Record<string, string[]>) : {},

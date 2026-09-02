@@ -1,7 +1,9 @@
 # Junior 2014 – sestavy 7+1
 
-Lokální PWA pro trenéra mladších žáků: sestava před zápasem, střídání během zápasu, odehrané minuty.
+Lokální PWA pro trenéra mladších žáků: **sestavy** jako hlavní účel – kádr, šablony sestav, příprava zápasu (docházka, startovní osmička, plán střídání) a během zápasu přehled, kdo je na hřišti, se střídáním dvěma tapy a rotací jedním tlačítkem.
 Bez backendu, bez účtů, bez sítě v runtime. Data žijí v `localStorage` telefonu.
+
+> **Od 2. 9. 2026 appka neměří čas.** Hodiny půle, minuty hráčů, odpočet rotace, vytížení i nastavení délky půle byly odstraněny na přání trenéra – při používání to bylo navíc. Zůstává jen pořadí událostí (kdo šel na hřiště / z hřiště), z něj se odvozuje kdo je na hřišti, kdo ještě nehrál a sezónní **účast** (počet dohraných zápasů, ve kterých hráč nastoupil). Původní `lib/minutes.ts` s výpočtem minut je smazaný; sekce níž, které o minutách mluví, popisují historii návrhu.
 
 **Živě:** https://jaroslavsoucek-art.github.io/Junior/ (GitHub Pages, nasazuje se automaticky z `main`).
 

@@ -40,13 +40,13 @@ export function remapAssignments(from: Formation, to: Formation, assignments: As
 }
 
 /**
- * Bench order. With a target role: best fit first, then fewest minutes.
+ * Bench order. With a target role: best fit first, then fewest appearances.
  * Without: by role (GK, DEF, MID_C, MID_W, FWD) then name – the coach reads
  * the bench like a squad list.
  */
 export function orderBench(
   players: Player[],
-  seconds: Record<string, number>,
+  seconds: Record<string, number>, // any "less played" key – appearances or minutes
   targetRole: PositionRole | null,
 ): Player[] {
   const roleIndex: Record<PositionRole, number> = { GK: 0, DEF: 1, MID_C: 2, MID_W: 3, FWD: 4 };

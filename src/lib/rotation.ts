@@ -1,6 +1,5 @@
-import type { Formation, MatchEvent, Player, PositionRole } from '../types';
+import type { Formation, Player, PositionRole } from '../types';
 import { roleFit } from './lineup';
-import { clockSegments } from './minutes';
 
 export type RotationPair = { onPlayerId: string; offPlayerId: string; slotId: string };
 
@@ -9,7 +8,7 @@ export type RotationInput = {
   onPitch: Record<string, string>; // slotId -> playerId
   benchIds: string[]; // available, not on pitch
   players: Player[];
-  seconds: Record<string, number>; // minutes so far (match)
+  priority: Record<string, number>; // bench order key – lower comes on first (e.g. time of last leaving the pitch, 0 = never played)
   rotateGoalkeeper: boolean;
 };
 
@@ -23,22 +22,22 @@ export function candidateSlots(input: RotationInput, benchPlayerId: string, excl
   const byId = new Map(input.players.map((p) => [p.id, p]));
   return input.formation.slots
     .filter((s) => input.onPitch[s.id] && !excludeSlotIds.has(s.id) && (input.rotateGoalkeeper || s.role !== 'GK'))
-    .map((s) => ({ slotId: s.id, fit: fitFor(byId, benchPlayerId, s.role), sec: input.seconds[input.onPitch[s.id]] ?? 0 }))
-    .sort((a, b) => b.fit - a.fit || b.sec - a.sec)
+    .map((s) => ({ slotId: s.id, fit: fitFor(byId, benchPlayerId, s.role), sec: input.priority[input.onPitch[s.id]] ?? 0 }))
+    .sort((a, b) => b.fit - a.fit || a.sec - b.sec)
     .map((x) => x.slotId);
 }
 
 /**
- * Propose one substitution per bench player: fewest-minutes bench player first,
- * each replacing the most-played field player on a compatible position
- * (exact role → same group → anyone). The goalkeeper is left alone unless
+ * Propose one substitution per bench player: the one waiting longest first,
+ * each replacing the field player on a compatible position who has been on
+ * the pitch longest (exact role → same group → anyone). The goalkeeper is left alone unless
  * `rotateGoalkeeper`. Greedy and deterministic – the coach edits by tapping.
  */
 export function proposeRotation(input: RotationInput): RotationPair[] {
   const byId = new Map(input.players.map((p) => [p.id, p]));
   const bench = [...input.benchIds]
     .filter((id) => byId.has(id))
-    .sort((a, b) => (input.seconds[a] ?? 0) - (input.seconds[b] ?? 0) || byId.get(a)!.name.localeCompare(byId.get(b)!.name, 'cs'));
+    .sort((a, b) => (input.priority[a] ?? 0) - (input.priority[b] ?? 0) || byId.get(a)!.name.localeCompare(byId.get(b)!.name, 'cs'));
   const used = new Set<string>();
   const pairs: RotationPair[] = [];
   for (const onPlayerId of bench) {
@@ -63,45 +62,6 @@ export function cyclePairOff(input: RotationInput, pairs: RotationPair[], index:
   const i = options.indexOf(pair.slotId);
   const next = options[(i + 1) % options.length];
   return pairs.map((p, j) => (j === index ? { ...p, slotId: next, offPlayerId: input.onPitch[next] } : p));
-}
-
-/** Seconds of running match clock since wall-clock instant `since`. */
-export function playSecondsSince(events: MatchEvent[], since: number, now: number): number {
-  let ms = 0;
-  for (const seg of clockSegments(events, now)) {
-    const s = Math.max(seg.start, since);
-    const e = Math.min(seg.end, now);
-    if (e > s) ms += e - s;
-  }
-  return Math.floor(ms / 1000);
-}
-
-/** Wall-clock anchor for the rotation countdown: last SUB, else last PERIOD_START. */
-export function rotationAnchor(events: MatchEvent[]): number | null {
-  let anchor: number | null = null;
-  for (const e of events) {
-    if ((e.type === 'SUB' || e.type === 'PERIOD_START') && (anchor === null || e.at > anchor)) anchor = e.at;
-  }
-  return anchor;
-}
-
-export type Load = { playerId: string; seconds: number; deviation: number; low: boolean };
-
-/**
- * Minutes vs. the average of all available players. "Low" = clearly under
- * average: at least 2 minutes and 30 % below it.
- */
-export function computeLoad(availableIds: string[], seconds: Record<string, number>): { avg: number; rows: Load[] } {
-  const vals = availableIds.map((id) => seconds[id] ?? 0);
-  const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
-  const rows = availableIds
-    .map((playerId) => {
-      const s = seconds[playerId] ?? 0;
-      const deviation = s - avg;
-      return { playerId, seconds: s, deviation, low: avg > 0 && deviation <= -120 && s < avg * 0.7 };
-    })
-    .sort((a, b) => a.seconds - b.seconds);
-  return { avg, rows };
 }
 
 // ---------------------------------------------------------------------------
@@ -167,7 +127,7 @@ export function sanitizeGroups(groups: RotationGroups, formation: Formation, ava
 
 /**
  * Live proposal from the plan: for every slot group, the group member on the
- * bench with the fewest minutes comes on for the current occupant. Bench
+ * bench who has waited longest comes on for the current occupant. Bench
  * players outside the plan are then placed by the generic fit rule on slots
  * not yet used. One tap executes the whole batch.
  */
@@ -176,7 +136,7 @@ export function proposeFromPlan(input: RotationInput, groups: RotationGroups): R
   const used = new Set<string>();
   const placed = new Set<string>();
   const pairs: RotationPair[] = [];
-  const sec = (id: string) => input.seconds[id] ?? 0;
+  const sec = (id: string) => input.priority[id] ?? 0;
 
   for (const slot of input.formation.slots) {
     const occupant = input.onPitch[slot.id];

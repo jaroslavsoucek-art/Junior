@@ -49,9 +49,8 @@ export type Match = {
   rotationGroups: Record<string, string[]>;
 };
 
+// Pořadí událostí – appka neměří čas, `at` slouží jen k řazení a k undo dávek.
 export type MatchEvent =
-  | { type: 'PERIOD_START'; period: number; at: number } // at = Date.now()
-  | { type: 'PERIOD_END'; period: number; at: number }
   | { type: 'SUB'; at: number; onPlayerId: string; offPlayerId: string; slotId: string }
   | { type: 'PLAYER_ON'; at: number; playerId: string; slotId: string }
   | { type: 'PLAYER_OFF'; at: number; playerId: string };

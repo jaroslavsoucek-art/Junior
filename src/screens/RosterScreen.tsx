@@ -8,13 +8,12 @@ import { Segmented } from '../components/Segmented';
 import { IconChevronDown, IconChevronRight, IconGear, IconPlus } from '../components/icons';
 import { PlayerEditor } from '../components/PlayerEditor';
 import { SettingsScreen } from './SettingsScreen';
-import { seasonSeconds } from '../lib/season';
-import { computeLoad } from '../lib/rotation';
+import { appearances, formatAppearances } from '../lib/season';
 import { otherTeam, readTeamPlayers } from '../lib/team';
 import { SEED_PLAYERS_BY_TEAM } from '../data/seed';
 import { ALL_ROLES, ROLE_LABEL, type Player, type PositionRole } from '../types';
 
-type Sort = 'position' | 'minutes';
+type Sort = 'position' | 'name';
 const ROLE_ORDER: Record<PositionRole, number> = { GK: 0, DEF: 1, MID_C: 2, MID_W: 3, FWD: 4 };
 const primaryRole = (p: Player): PositionRole | null => [...p.roles].sort((a, b) => ROLE_ORDER[a] - ROLE_ORDER[b])[0] ?? null;
 const roleRank = (p: Player) => {
@@ -35,17 +34,15 @@ export function RosterScreen() {
   const [pickFromOther, setPickFromOther] = useState(false);
   const other = otherTeam(ACTIVE_TEAM);
 
-  const season = useMemo(() => seasonSeconds(matches), [matches]);
+  const apps = useMemo(() => appearances(matches), [matches]);
   const finished = matches.filter((m) => m.status === 'finished').length;
   const byName = (a: Player, b: Player) => a.name.localeCompare(b.name, 'cs');
 
   const active = useMemo(() => {
     const list = players.filter((p) => p.active);
-    return sort === 'position' ? list.sort((a, b) => roleRank(a) - roleRank(b) || byName(a, b)) : list.sort((a, b) => (season[a.id] ?? 0) - (season[b.id] ?? 0) || byName(a, b));
-  }, [players, sort, season]);
+    return sort === 'position' ? list.sort((a, b) => roleRank(a) - roleRank(b) || byName(a, b)) : list.sort(byName);
+  }, [players, sort]);
   const inactive = useMemo(() => players.filter((p) => !p.active).sort(byName), [players]);
-  const maxSec = useMemo(() => Math.max(1, ...active.map((p) => season[p.id] ?? 0)), [active, season]);
-  const lowIds = useMemo(() => new Set(computeLoad(active.map((p) => p.id), season).rows.filter((r) => r.low).map((r) => r.playerId)), [active, season]);
 
   if (showSettings) return <SettingsScreen onBack={() => setShowSettings(false)} />;
 
@@ -68,7 +65,7 @@ export function RosterScreen() {
       />
 
       <div className="mb-[18px]">
-        <Segmented value={sort} onChange={setSort} options={[{ value: 'position', label: 'Podle postu' }, { value: 'minutes', label: 'Nejmíň minut' }]} />
+        <Segmented value={sort} onChange={setSort} options={[{ value: 'position', label: 'Podle postu' }, { value: 'name', label: 'Podle jména' }]} />
       </div>
 
       {groups.map((g) => (
@@ -83,7 +80,7 @@ export function RosterScreen() {
           )}
           <ul className="flex flex-col gap-2">
             {g.items.map((p) => (
-              <PlayerRow key={p.id} player={p} seconds={season[p.id] ?? 0} maxSec={maxSec} low={lowIds.has(p.id)} onTap={() => setEditing(p)} />
+              <PlayerRow key={p.id} player={p} apps={apps[p.id] ?? 0} onTap={() => setEditing(p)} />
             ))}
           </ul>
         </section>
@@ -111,7 +108,7 @@ export function RosterScreen() {
                     <button type="button" onClick={() => setEditing(p)} className="tap flex min-h-14 w-full items-center gap-3 rounded-2xl border border-line px-3 text-left">
                       {r ? <RoleSquare role={r} size={34} /> : <span className="size-[34px]" />}
                       <span className="min-w-0 flex-1 truncate text-[15px] font-bold text-ink">{p.name}</span>
-                      <span className="tabular text-[12px] font-bold text-muted">{Math.floor((season[p.id] ?? 0) / 60)}′</span>
+                      <span className="tabular text-[12px] font-bold text-muted">{formatAppearances(apps[p.id])}</span>
                     </button>
                   </li>
                 );
@@ -158,25 +155,21 @@ export function RosterScreen() {
   );
 }
 
-function PlayerRow({ player, seconds, maxSec, low, onTap }: { player: Player; seconds: number; maxSec: number; low: boolean; onTap: () => void }) {
+function PlayerRow({ player, apps, onTap }: { player: Player; apps: number; onTap: () => void }) {
   const role = primaryRole(player);
-  const pct = Math.round((seconds / maxSec) * 100);
   const guest = player.team && player.team !== ACTIVE_TEAM;
   return (
     <li>
-      <button type="button" onClick={onTap} className={`tap grid min-h-16 w-full grid-cols-[auto_1fr_auto] items-center gap-3 rounded-[18px] border bg-surface px-3.5 py-2.5 text-left ${low ? 'border-accent-line' : 'border-line'}`}>
+      <button type="button" onClick={onTap} className="tap grid min-h-16 w-full grid-cols-[auto_1fr_auto] items-center gap-3 rounded-[18px] border border-line bg-surface px-3.5 py-2.5 text-left">
         {role ? <RoleSquare role={role} /> : <span className="flex size-[38px] items-center justify-center rounded-xl border border-dashed border-line-2 text-[11px] font-extrabold text-faint">?</span>}
-        <span className="flex min-w-0 flex-col gap-1.5">
+        <span className="flex min-w-0 flex-col gap-0.5">
           <span className="flex items-center gap-1.5">
             <span className="truncate text-[17px] font-bold text-ink">{player.name}</span>
             {guest && <TeamTag team={player.team!} />}
-            {low && <span className="rounded-md bg-accent/10 px-1.5 py-px text-[10px] font-extrabold text-accent-text">MÁLO MINUT</span>}
           </span>
-          <span className="flex items-center gap-2">
-            <span className="block h-1 flex-1 overflow-hidden rounded-full bg-ink/10">
-              <span className={`block h-full rounded-full ${low ? 'bg-accent' : 'bg-btn'}`} style={{ width: `${pct}%` }} />
-            </span>
-            <span className={`tabular text-[12px] font-bold ${low ? 'text-accent-text' : 'text-muted'}`}>{Math.floor(seconds / 60)}′</span>
+          <span className="flex flex-wrap items-center gap-1.5 text-[12px] font-semibold text-muted">
+            {player.roles.length === 0 && <NoRoleChip />}
+            <span className="tabular">{formatAppearances(apps)}</span>
           </span>
         </span>
         <IconChevronRight className="text-chev" />

@@ -6,7 +6,7 @@ import { DEFAULT_FORMATION_ID, SEED_FORMATIONS, SEED_PLAYERS_BY_TEAM, SEED_REVIS
 import { getActiveTeam, migrateLegacyStorage, storageKeyFor, type Team } from '../lib/team';
 import { newId } from '../lib/id';
 import { remapAssignments, type Assignments } from '../lib/lineup';
-import { clockState, withoutLastBatch } from '../lib/minutes';
+import { withoutLastBatch } from '../lib/minutes';
 import { startingLineup } from '../lib/match';
 import { absorbSubs, planRotationGroups, setRotationPartner as setPartner, type RotationPair } from '../lib/rotation';
 
@@ -30,7 +30,7 @@ export type Draft = {
   matchId: string | null; // when editing a match's starting lineup, bench = available players
 };
 
-export type MatchInput = Pick<Match, 'opponent' | 'date' | 'halfLengthMin' | 'halvesCount' | 'rotationIntervalMin' | 'rotateGoalkeeper'>;
+export type MatchInput = Pick<Match, 'opponent' | 'date' | 'rotateGoalkeeper'>;
 
 export type AppState = AppData & {
   draft: Draft;
@@ -94,8 +94,6 @@ export type AppState = AppData & {
 
   // Live – every action appends events; minutes are always derived from them
   startMatch: (matchId: string) => void; // status live + PLAYER_ON for the starting eight
-  startPeriod: (matchId: string, period: number) => void;
-  endPeriod: (matchId: string) => void; // pause or end of period – the UI decides what comes next
   substitute: (matchId: string, subs: RotationPair[]) => void; // one batch, same `at`
   playerOn: (matchId: string, playerId: string, slotId: string) => void;
   playerOff: (matchId: string, playerId: string) => void;
@@ -287,6 +285,10 @@ export const useStore = create<AppState>()(
               id,
               ...input,
               opponent: input.opponent.trim(),
+              // kept for data compatibility, the app no longer tracks time
+              halfLengthMin: 30,
+              halvesCount: 2,
+              rotationIntervalMin: 5,
               // default: everyone in the squad is present, the coach taps the absent ones off
               availablePlayerIds: s.players.filter((p) => p.active).map((p) => p.id),
               startingLineupId,
@@ -401,17 +403,6 @@ export const useStore = create<AppState>()(
         }));
         set({ activeMatchId: matchId, tab: 'live' });
       },
-      startPeriod: (matchId, period) =>
-        patchMatch(set, matchId, (m) => {
-          if (m.status !== 'live' || clockState(m).kind === 'running') return m;
-          return { ...m, events: [...m.events, { type: 'PERIOD_START', period, at: Date.now() }] };
-        }),
-      endPeriod: (matchId) =>
-        patchMatch(set, matchId, (m) => {
-          const st = clockState(m);
-          if (st.kind !== 'running') return m;
-          return { ...m, events: [...m.events, { type: 'PERIOD_END', period: st.period, at: Date.now() }] };
-        }),
       substitute: (matchId, subs) =>
         patchMatch(set, matchId, (m) => {
           if (m.status !== 'live' || subs.length === 0) return m;
@@ -428,12 +419,7 @@ export const useStore = create<AppState>()(
         patchMatch(set, matchId, (m) => (m.status === 'live' ? { ...m, events: [...m.events, { type: 'PLAYER_OFF', at: Date.now(), playerId }] } : m)),
       undoLastEvent: (matchId) => patchMatch(set, matchId, (m) => (m.status === 'live' ? { ...m, events: withoutLastBatch(m.events) } : m)),
       finishMatch: (matchId) =>
-        patchMatch(set, matchId, (m) => {
-          if (m.status !== 'live') return m;
-          const st = clockState(m);
-          const events = st.kind === 'running' ? [...m.events, { type: 'PERIOD_END' as const, period: st.period, at: Date.now() }] : m.events;
-          return { ...m, events, status: 'finished' };
-        }),
+        patchMatch(set, matchId, (m) => (m.status === 'live' ? { ...m, status: 'finished' } : m)),
 
       addFormation: (f) => set((s) => ({ formations: [...s.formations, f] })),
       deleteFormation: (formationId) =>
@@ -460,6 +446,10 @@ export const useStore = create<AppState>()(
        */
       migrate: (persisted, fromVersion) => {
         let s = persisted as Partial<AppData>;
+        if (fromVersion < 4) {
+          // time tracking removed – drop period events from stored matches
+          s = { ...s, matches: (s.matches ?? []).map((m) => ({ ...m, events: (m.events as { type: string }[]).filter((e) => e.type === 'SUB' || e.type === 'PLAYER_ON' || e.type === 'PLAYER_OFF') as Match['events'] })) };
+        }
         if (fromVersion < SEED_REVISION) {
           // seed formations: refresh coordinates (slot ids are stable, lineups keep working); custom ones untouched
           const seedIds = new Set(SEED_FORMATIONS.map((f) => f.id));

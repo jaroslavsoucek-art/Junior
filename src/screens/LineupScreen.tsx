@@ -23,7 +23,7 @@ import { todayISO } from '../lib/match';
 import { Btn } from '../components/Modal';
 import { IconArrowRight, IconBack, IconChevronDown } from '../components/icons';
 import { orderBench, roleFit } from '../lib/lineup';
-import { formatMinutes, seasonSeconds } from '../lib/season';
+import { appearances, formatAppearances } from '../lib/season';
 import type { FormationSlot, Player } from '../types';
 
 type Sel = { kind: 'bench'; playerId: string } | { kind: 'slot'; slotId: string } | null;
@@ -44,11 +44,10 @@ function LineupEditor() {
 
   const [sel, setSel] = useState<Sel>(null);
   const [modal, setModal] = useState<'formation' | 'saveAs' | 'newMatch' | null>(null);
-  const settings = useStore((s) => s.settings);
   const [dragging, setDragging] = useState<string | null>(null);
 
   const formation = formations.find((f) => f.id === draft.formationId) ?? formations[0];
-  const season = useMemo(() => seasonSeconds(matches), [matches]);
+  const season = useMemo(() => appearances(matches), [matches]);
   const playerById = useMemo(() => new Map(players.map((p) => [p.id, p])), [players]);
 
   // Bench pool: active players (or the match's available players) not on the pitch.
@@ -248,7 +247,7 @@ function LineupEditor() {
               </button>
             )}
             {bench.map((p) => (
-              <DraggableTile key={p.id} player={p} sub={formatMinutes(season[p.id])} visual={tileVisual(p)} onTap={() => tapBench(p.id)} />
+              <DraggableTile key={p.id} player={p} sub={formatAppearances(season[p.id])} visual={tileVisual(p)} onTap={() => tapBench(p.id)} />
             ))}
             {bench.length === 0 && <p className="self-center px-2 text-[13px] text-muted">Všichni dostupní hráči jsou na hřišti.</p>}
             {filled > 0 && (
@@ -286,14 +285,7 @@ function LineupEditor() {
         <MatchForm
           title={`Nový zápas · ${draft.name}`}
           submitLabel="Vytvořit zápas"
-          initial={{
-            opponent: '',
-            date: todayISO(),
-            halfLengthMin: settings.defaultHalfLengthMin,
-            halvesCount: settings.defaultHalvesCount,
-            rotationIntervalMin: settings.defaultRotationIntervalMin,
-            rotateGoalkeeper: false,
-          }}
+          initial={{ opponent: '', date: todayISO(), rotateGoalkeeper: false }}
           onSave={(input) => {
             act.createMatch(input, draft.lineupId);
             setModal(null);

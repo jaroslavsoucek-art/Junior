@@ -1,25 +1,19 @@
 import type { Match } from '../types';
-import { computeMinutes } from './minutes';
+import { appeared } from './minutes';
 
-/**
- * Season totals in seconds per player: sum over all `finished` matches.
- * Finished matches have every period closed, so any `now` at or after the last
- * event gives the same result; we use the last event's timestamp to stay
- * deterministic.
- */
-export function seasonSeconds(matches: Match[]): Record<string, number> {
-  const total: Record<string, number> = {};
+/** Appearances per player: number of finished matches in which the player got on the pitch. */
+export function appearances(matches: Match[]): Record<string, number> {
+  const out: Record<string, number> = {};
   for (const m of matches) {
     if (m.status !== 'finished') continue;
-    const last = m.events.reduce((acc, e) => Math.max(acc, e.at), 0);
-    for (const [playerId, sec] of Object.entries(computeMinutes(m, last))) {
-      total[playerId] = (total[playerId] ?? 0) + sec;
-    }
+    for (const id of appeared(m.events)) out[id] = (out[id] ?? 0) + 1;
   }
-  return total;
+  return out;
 }
 
-export function formatMinutes(seconds: number | undefined): string {
-  const min = Math.floor((seconds ?? 0) / 60);
-  return `${min} min`;
+export function formatAppearances(n: number | undefined): string {
+  const c = n ?? 0;
+  if (c === 1) return '1 zápas';
+  if (c >= 2 && c <= 4) return `${c} zápasy`;
+  return `${c} zápasů`;
 }

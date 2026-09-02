@@ -3,7 +3,6 @@ import { ACTIVE_TEAM, pickData, useStore, type AppData } from '../store';
 import { Btn, Card, Confirm, Modal } from '../components/Modal';
 import { DetailHeader } from '../components/ScreenHeader';
 import { Segmented } from '../components/Segmented';
-import { Stepper } from '../components/Stepper';
 import { CloudSync } from '../components/CloudSync';
 import { IconChevronRight, IconCloud } from '../components/icons';
 import { buildExport, exportFileName, parseImport, previewImport, type ImportPreview } from '../lib/exportImport';
@@ -34,21 +33,6 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
         <h2 className="eyebrow mb-3">Vzhled</h2>
         <Segmented<ThemePref> size="lg" value={settings.theme ?? 'light'} options={[{ value: 'light', label: 'Světlý' }, { value: 'dark', label: 'Tmavý' }, { value: 'system', label: 'Systém' }]} onChange={(theme) => updateSettings({ theme })} />
         <p className="mt-2.5 text-[12px] font-medium text-faint">Na slunci zůstává světlý režim čitelnější, tmavý je pro halu a večerní zápasy.</p>
-      </Card>
-
-      <Card className="mb-3.5">
-        <h2 className="eyebrow mb-3">Výchozí pro nový zápas</h2>
-        <div className="flex flex-col gap-2.5">
-          <Row label="Délka půle">
-            <Stepper label="Délka půle" value={settings.defaultHalfLengthMin} min={5} max={60} step={5} unit="′" onChange={(n) => updateSettings({ defaultHalfLengthMin: n })} />
-          </Row>
-          <Row label="Počet půlí">
-            <Stepper label="Počet půlí" value={settings.defaultHalvesCount} min={1} max={4} onChange={(n) => updateSettings({ defaultHalvesCount: n })} />
-          </Row>
-          <Row label="Interval rotace">
-            <Stepper label="Interval rotace" value={settings.defaultRotationIntervalMin} min={1} max={30} unit="′" onChange={(n) => updateSettings({ defaultRotationIntervalMin: n })} />
-          </Row>
-        </div>
       </Card>
 
       <button type="button" onClick={() => setDataOpen(true)} className="tap mb-3.5 flex min-h-[60px] w-full items-center justify-between rounded-[22px] border border-line bg-surface px-4 text-left">
@@ -212,13 +196,4 @@ function flash(set: (s: string | null) => void, msg: string) {
 
 function Toast({ text }: { text: string }) {
   return <div className="fixed inset-x-4 bottom-[92px] z-40 rounded-[18px] bg-[#141728] px-4 py-3 text-center text-[14px] font-bold text-white shadow-float">{text}</div>;
-}
-
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="flex min-h-12 items-center justify-between gap-3">
-      <span className="text-[15px] font-semibold text-ink">{label}</span>
-      {children}
-    </label>
-  );
 }

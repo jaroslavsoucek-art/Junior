@@ -6,10 +6,9 @@ import { LineupPreview } from '../components/LineupPreview';
 import { RotationPlan } from '../components/RotationPlan';
 import { DetailHeader, ScreenHeader } from '../components/ScreenHeader';
 import { IconChevronRight, IconTimer, IconTrash } from '../components/icons';
-import { useNow } from '../hooks/useNow';
 import { formatMatchDate, MIN_PLAYERS, startingLineup, todayISO } from '../lib/match';
-import { clockState, computeMinutes, formatClock, periodElapsedSec } from '../lib/minutes';
-import { playSecondsSince, rotationAnchor, sanitizeGroups } from '../lib/rotation';
+import { appeared } from '../lib/minutes';
+import { sanitizeGroups } from '../lib/rotation';
 import { ROLE_SHORT, type Match, type Player, type PositionRole } from '../types';
 
 export function MatchScreen() {
@@ -28,14 +27,11 @@ function MatchList() {
   const lineups = useStore((s) => s.lineups);
   const formations = useStore((s) => s.formations);
   const players = useStore((s) => s.players);
-  const settings = useStore((s) => s.settings);
   const createMatch = useStore((s) => s.createMatch);
   const openMatchDetail = useStore((s) => s.openMatchDetail);
   const deleteMatch = useStore((s) => s.deleteMatch);
   const [creating, setCreating] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Match | null>(null);
-  const live = matches.find((m) => m.status === 'live');
-  const now = useNow(!!live && clockState(live).kind === 'running');
 
   const sorted = useMemo(
     () =>
@@ -46,12 +42,6 @@ function MatchList() {
     [matches],
   );
 
-  const avgMin = (m: Match) => {
-    const secs = computeMinutes(m, m.events.reduce((a, e) => Math.max(a, e.at), 0));
-    const ids = m.availablePlayerIds;
-    if (!ids.length) return 0;
-    return Math.round(ids.reduce((a, id) => a + (secs[id] ?? 0), 0) / ids.length / 60);
-  };
 
   return (
     <div className="px-[18px] pb-[100px] pt-5">
@@ -71,10 +61,6 @@ function MatchList() {
           const st = startingLineup(m, lineups, formations, players);
           const steps = [m.availablePlayerIds.length >= MIN_PLAYERS, st.filled === 8, Object.keys(m.rotationGroups ?? {}).length > 0, m.status !== 'planned'];
           if (m.status === 'live') {
-            const cs = clockState(m);
-            const period = cs.kind === 'running' || cs.kind === 'stopped' ? cs.period : 1;
-            const anchor = rotationAnchor(m.events);
-            const remaining = anchor === null ? null : m.rotationIntervalMin * 60 - playSecondsSince(m.events, anchor, now);
             return (
               <li key={m.id}>
                 <button type="button" onClick={() => openMatchDetail(m.id)} className="tap flex min-h-[92px] w-full flex-col gap-2.5 rounded-[20px] bg-accent px-4 py-3.5 text-left text-white" style={{ boxShadow: '0 6px 18px rgba(164,23,42,0.24)' }}>
@@ -85,12 +71,10 @@ function MatchList() {
                       <span className="text-[11px] font-extrabold tracking-[0.06em]">HRAJE SE</span>
                     </span>
                   </span>
-                  <span className="tabular flex flex-wrap items-center gap-3 text-[12px] font-bold opacity-90">
-                    <span>
-                      {period}. půle · {formatClock(periodElapsedSec(m, period, now))}
-                    </span>
+                  <span className="flex flex-wrap items-center gap-3 text-[12px] font-bold opacity-90">
+                    <span>{formatMatchDate(m.date)}</span>
                     <span>k dispozici {m.availablePlayerIds.length}</span>
-                    {remaining !== null && <span>{remaining <= 0 ? 'rotace teď' : `rotace za ${formatClock(remaining)}`}</span>}
+                    <span>{m.events.filter((e) => e.type === 'SUB').length} střídání</span>
                   </span>
                 </button>
               </li>
@@ -104,7 +88,7 @@ function MatchList() {
                   <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-extrabold tracking-[0.06em] ${m.status === 'planned' ? 'bg-primary/10 text-heading' : 'bg-ink/5 text-muted'}`}>{m.status === 'planned' ? 'PŘIPRAVENO' : 'DOHRÁNO'}</span>
                 </span>
                 <span className="text-[12px] font-semibold text-muted">
-                  {formatMatchDate(m.date)} · {m.halvesCount}×{m.halfLengthMin} min · {m.status === 'planned' ? `k dispozici ${m.availablePlayerIds.length} · sestava ${st.filled}/8` : `ø ${avgMin(m)} min na hráče`}
+                  {formatMatchDate(m.date)} · {m.status === 'planned' ? `k dispozici ${m.availablePlayerIds.length} · sestava ${st.filled}/8` : `hrálo ${appeared(m.events).size} z ${m.availablePlayerIds.length}`}
                 </span>
                 {m.status === 'planned' && (
                   <span className="flex w-full gap-1">
@@ -139,7 +123,7 @@ function MatchList() {
         <MatchForm
           title="Nový zápas"
           submitLabel="Vytvořit zápas"
-          initial={{ opponent: '', date: todayISO(), halfLengthMin: settings.defaultHalfLengthMin, halvesCount: settings.defaultHalvesCount, rotationIntervalMin: settings.defaultRotationIntervalMin, rotateGoalkeeper: false }}
+          initial={{ opponent: '', date: todayISO(), rotateGoalkeeper: false }}
           onSave={(input) => {
             createMatch(input);
             setCreating(false);
@@ -184,7 +168,7 @@ function MatchDetail({ match, onBack }: { match: Match; onBack: () => void }) {
   const visible = allAttendance ? ordered : ordered.slice(0, 5);
   const hidden = ordered.length - visible.length;
 
-  const input: MatchInput = { opponent: match.opponent, date: match.date, halfLengthMin: match.halfLengthMin, halvesCount: match.halvesCount, rotationIntervalMin: match.rotationIntervalMin, rotateGoalkeeper: match.rotateGoalkeeper };
+  const input: MatchInput = { opponent: match.opponent, date: match.date, rotateGoalkeeper: match.rotateGoalkeeper };
   const missingNames = starting.missingPlayerIds.map((id) => players.find((p) => p.id === id)?.name ?? id);
   const missingRoles = starting.missingSlotIds.map((sid) => starting.formation?.slots.find((s) => s.id === sid)?.role).filter(Boolean) as PositionRole[];
 
@@ -193,7 +177,7 @@ function MatchDetail({ match, onBack }: { match: Match; onBack: () => void }) {
       <div className="h-full overflow-y-auto px-[18px] pb-[120px] pt-[18px]">
         <DetailHeader
           title={`vs ${match.opponent}`}
-          subtitle={`${formatMatchDate(match.date)} · ${match.halvesCount}×${match.halfLengthMin} min · rotace ${match.rotationIntervalMin} min${match.rotateGoalkeeper ? ' vč. GK' : ''}`}
+          subtitle={`${formatMatchDate(match.date)}${match.rotateGoalkeeper ? ' · točí se i brankář' : ''}`}
           onBack={onBack}
           right={
             match.status !== 'finished' ? (
@@ -352,7 +336,7 @@ function MatchDetail({ match, onBack }: { match: Match; onBack: () => void }) {
               act.setTab('live');
             }}
           >
-            {match.status === 'live' ? 'Zpět do Live' : 'Zobrazit průběh'}
+            {match.status === 'live' ? 'Zpět do zápasu' : 'Zobrazit výsledek'}
           </Btn>
         )}
         {!locked && (
@@ -376,14 +360,14 @@ function MatchDetail({ match, onBack }: { match: Match; onBack: () => void }) {
             style={ready ? { boxShadow: '0 8px 24px rgba(164,23,42,0.3)' } : undefined}
           >
             <IconTimer size={20} />
-            <span className="text-[17px] font-extrabold tracking-[-0.01em]">Přejít na Live</span>
+            <span className="text-[17px] font-extrabold tracking-[-0.01em]">Přejít do zápasu</span>
           </button>
           {!ready && <p className="pointer-events-auto text-center text-[12px] font-semibold text-muted">Nejdřív doplň docházku a kompletní startovní osmičku.</p>}
         </div>
       )}
 
       {planOpen && starting.formation && (
-        <Modal title="Plán rotace" subtitle={`každých ${match.rotationIntervalMin} min · kdo za koho se točí · v Live pak stačí jedno tlačítko`} onClose={() => setPlanOpen(false)}>
+        <Modal title="Plán rotace" subtitle="Kdo za koho se točí · v zápase pak stačí jedno tlačítko" onClose={() => setPlanOpen(false)}>
           <RotationPlan match={match} starting={starting} players={players} locked={locked} onSet={(pid, slotId) => act.setRotationPartner(match.id, pid, slotId)} onAuto={() => act.autoPlanRotation(match.id)} />
           <Btn kind="primary" className="mt-3.5 w-full" onClick={() => setPlanOpen(false)}>
             Hotovo
