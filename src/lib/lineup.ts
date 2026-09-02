@@ -4,6 +4,7 @@ export type Assignments = Record<string, string | null>;
 
 /** 2 = same role, 1 = same group (e.g. MID_C ↔ MID_W), 0 = anything else. */
 export function roleFit(player: Player, role: PositionRole): 0 | 1 | 2 {
+  if (player.roles.length === 0) return 1; // post nezadán – hodí se kamkoli, ale ne přednostně
   if (player.roles.includes(role)) return 2;
   if (player.roles.some((r) => ROLE_GROUP[r] === ROLE_GROUP[role])) return 1;
   return 0;

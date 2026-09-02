@@ -25,3 +25,6 @@ dist-ssr
 
 # Claude Code local launch config
 .claude/
+
+# Netlify drag&drop balíčky
+release/

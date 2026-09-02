@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
-import { pickData, useStore, type AppData } from '../store';
+import { ACTIVE_TEAM, pickData, useStore, type AppData } from '../store';
+import { switchTeamAndReload, TEAMS } from '../lib/team';
 import { Btn, Confirm, Modal } from '../components/Modal';
 import { buildExport, exportFileName, parseImport, previewImport, type ImportPreview } from '../lib/exportImport';
 
@@ -17,8 +18,8 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
 
   async function doExport() {
     const data = pickData(useStore.getState());
-    const json = JSON.stringify(buildExport(data), null, 2);
-    const name = exportFileName();
+    const json = JSON.stringify(buildExport(data, new Date(), ACTIVE_TEAM), null, 2);
+    const name = exportFileName(new Date(), ACTIVE_TEAM);
     const file = new File([json], name, { type: 'application/json' });
     // iOS standalone PWAs handle <a download> poorly; the share sheet (→ "Save to Files") is reliable.
     if (navigator.canShare?.({ files: [file] })) {
@@ -47,6 +48,10 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
       setError(parsed.error);
       return;
     }
+    if (parsed.team && parsed.team !== ACTIVE_TEAM) {
+      setError(`Soubor je záloha týmu ${parsed.team}, aktivní je tým ${ACTIVE_TEAM}. Přepni tým a importuj tam.`);
+      return;
+    }
     setPending({ data: parsed.data, exportedAt: parsed.exportedAt, preview: previewImport(pickData(useStore.getState()), parsed.data) });
     if (fileRef.current) fileRef.current.value = '';
   }
@@ -64,6 +69,23 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
         </button>
         <h1 className="text-2xl font-bold">Nastavení</h1>
       </div>
+
+      <Section title="Tým">
+        <p className="text-sm text-ink-muted">Každý tým má vlastní kádr, sestavy, zápasy i minuty. Přepnutí appku znovu načte.</p>
+        <div className="flex gap-2 no-touch-fx">
+          {TEAMS.map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => t !== ACTIVE_TEAM && switchTeamAndReload(t)}
+              aria-pressed={t === ACTIVE_TEAM}
+              className={`tap flex-1 rounded-xl border-2 text-lg font-bold ${t === ACTIVE_TEAM ? 'border-primary bg-primary text-white' : 'border-ink/20 bg-white'}`}
+            >
+              Tým {t}
+            </button>
+          ))}
+        </div>
+      </Section>
 
       <Section title="Výchozí hodnoty pro nový zápas">
         <NumberField
@@ -85,7 +107,7 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
 
       <Section title="Záloha dat">
         <p className="text-sm text-ink-muted">
-          Vše je jen v tomto telefonu. Export vytvoří soubor <code>junior-&lt;datum&gt;.json</code> s hráči, sestavami, zápasy i formacemi.
+          Vše je jen v tomto telefonu. Export vytvoří soubor <code>junior-{ACTIVE_TEAM}-&lt;datum&gt;.json</code> s kádrem, sestavami, zápasy i formacemi týmu {ACTIVE_TEAM}.
         </p>
         <Btn onClick={doExport} kind="primary">
           Exportovat JSON
@@ -171,7 +193,7 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
       {confirmWipe && (
         <Confirm
           title="Smazat všechna data?"
-          text="Smaže hráče, sestavy i všechny zápasy s minutami. Vrátí se výchozí kádr. Nejde vzít zpět – nejdřív si udělej export."
+          text={`Smaže hráče, sestavy i všechny zápasy s minutami týmu ${ACTIVE_TEAM}. Vrátí se výchozí kádr. Nejde vzít zpět – nejdřív si udělej export.`}
           confirmLabel="Smazat vše"
           danger
           onCancel={() => setConfirmWipe(false)}

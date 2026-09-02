@@ -1,8 +1,9 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { Formation, Lineup, Match, MatchEvent, Player, PositionRole, Settings } from '../types';
+import type { Formation, Lineup, Match, MatchEvent, Player, Settings } from '../types';
 import type { TabId } from '../components/TabBar';
-import { DEFAULT_FORMATION_ID, SEED_FORMATIONS, SEED_PLAYERS } from '../data/seed';
+import { DEFAULT_FORMATION_ID, SEED_FORMATIONS, SEED_PLAYERS_BY_TEAM } from '../data/seed';
+import { getActiveTeam, migrateLegacyStorage, storageKeyFor, type Team } from '../lib/team';
 import { newId } from '../lib/id';
 import { remapAssignments, type Assignments } from '../lib/lineup';
 import { clockState, withoutLastBatch } from '../lib/minutes';
@@ -42,8 +43,8 @@ export type AppState = AppData & {
   replaceAll: (data: AppData) => void;
   resetToSeed: () => void;
 
-  // Kádr
-  addPlayer: (name: string, roles: PositionRole[]) => string;
+  // Kádr – noví hráči přicházejí jen z druhého týmu
+  addPlayer: (player: Player) => void;
   updatePlayer: (id: string, patch: Partial<Pick<Player, 'name' | 'roles' | 'active'>>) => void;
 
   // Nastavení
@@ -98,7 +99,9 @@ export type AppState = AppData & {
   finishMatch: (matchId: string) => void;
 };
 
-export const STORAGE_KEY = 'junior-v1';
+migrateLegacyStorage();
+export const ACTIVE_TEAM: Team = getActiveTeam();
+export const STORAGE_KEY = storageKeyFor(ACTIVE_TEAM);
 
 export function emptyAssignments(f: Formation): Assignments {
   return Object.fromEntries(f.slots.map((s) => [s.id, null]));
@@ -109,9 +112,9 @@ export function emptyDraft(formations: Formation[] = SEED_FORMATIONS): Draft {
   return { lineupId: null, name: '', formationId: f.id, assignments: emptyAssignments(f), matchId: null };
 }
 
-export function seedData(): AppData {
+export function seedData(team: Team = ACTIVE_TEAM): AppData {
   return {
-    players: SEED_PLAYERS,
+    players: SEED_PLAYERS_BY_TEAM[team],
     formations: SEED_FORMATIONS,
     lineups: [],
     matches: [],
@@ -170,11 +173,8 @@ export const useStore = create<AppState>()(
       replaceAll: (data) => set(() => ({ ...data, draft: emptyDraft(data.formations), activeMatchId: null })),
       resetToSeed: () => set(() => ({ ...seedData(), draft: emptyDraft(), activeMatchId: null })),
 
-      addPlayer: (name, roles) => {
-        const id = newId('p');
-        set((s) => ({ players: [...s.players, { id, name: name.trim(), roles, active: true }] }));
-        return id;
-      },
+      addPlayer: (player) =>
+        set((s) => (s.players.some((p) => p.id === player.id) ? {} : { players: [...s.players, { ...player, active: true }] })),
       updatePlayer: (id, patch) =>
         set((s) => ({
           players: s.players.map((p) => (p.id === id ? { ...p, ...patch } : p)),

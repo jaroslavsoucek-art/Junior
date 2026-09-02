@@ -19,7 +19,7 @@ export function PlayerEditor({
   const toggleRole = (r: PositionRole) =>
     setRoles((rs) => (rs.includes(r) ? rs.filter((x) => x !== r) : [...rs, r]));
 
-  const valid = name.trim().length > 0 && roles.length > 0;
+  const valid = name.trim().length > 0;
 
   return (
     <Modal title={player ? 'Upravit hráče' : 'Nový hráč'} onClose={onClose}>
@@ -42,7 +42,7 @@ export function PlayerEditor({
         </label>
 
         <div className="flex flex-col gap-1">
-          <span className="text-sm font-semibold text-ink-muted">Posty (může být víc)</span>
+          <span className="text-sm font-semibold text-ink-muted">Posty (může být víc, může zůstat prázdné)</span>
           <div className="flex flex-wrap gap-2 no-touch-fx">
             {ALL_ROLES.map((r) => {
               const on = roles.includes(r);

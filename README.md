@@ -5,6 +5,18 @@ Bez backendu, bez účtů, bez sítě v runtime. Data žijí v `localStorage` te
 
 **Živě:** https://jaroslavsoucek-art.github.io/Junior/ (GitHub Pages, nasazuje se automaticky z `main`).
 
+## Nasazení na Netlify (sdílení s kolegy)
+
+Nejrychlejší je ruční deploy: `npm run build` vyrobí `dist/` pro root URL (bez `BASE_PATH`), ten zabalíš a přetáhneš na Netlify.
+
+```bash
+npm run build && (cd dist && zip -qr ../release/junior-netlify.zip .)
+```
+
+app.netlify.com → *Add new site* → *Deploy manually* → přetáhnout `release/junior-netlify.zip` (nebo složku `dist/`). Netlify dá HTTPS adresu `https://<název>.netlify.app`, na které PWA funguje včetně instalace na plochu a offline. Pro napojení na repo je v rootu `netlify.toml` (build `npm ci && npm test && npm run build`, publish `dist`, `sw.js` bez cache). `public/_redirects` posílá všechny cesty na `index.html`.
+
+Pozor: každá adresa (GitHub Pages / Netlify) má vlastní `localStorage`, data se mezi nimi nesdílí – přenos je přes export/import JSON.
+
 ## Spuštění
 
 ```bash
@@ -112,6 +124,14 @@ scripts/gen-icons.swift  ikony z loga klubu (scripts/logo-src.png), bílé pozad
 - **Live jedním tlačítkem**: „Provést rotaci (n)“ provede plánované dvojice. `proposeFromPlan`: v každé skupině jde na hřiště ten z lavičky s nejmíň minutami za aktuálního hráče na postu; hráči mimo plán se doplní obecným pravidlem. „Upravit“ otevře stejný návrh k ruční změně. Po každém střídání se plán synchronizuje (`absorbSubs`), takže příště se točí zpět ten, kdo šel dolů.
 - **Kádr** je řazený podle postů od brankáře (skupinové nadpisy), uvnitř abecedně; druhé řazení podle minut zůstává.
 - **Barvy podle loga**: `--color-primary` námořnická modř (#161c4b) pro tlačítka, aktivní tab a nadpisy; `--color-accent` klubová červená (#a4172a) pro varování a výběr; zlatá (#f2b826) jako doplňkový token. Hřiště zůstává zelené, to je čitelnost na slunci. Logo (`src/assets/logo.png`, průhledné) je v hlavičce Kádru, Zápasu a Live.
+
+### Dva týmy (A / B)
+
+- **Přepínač týmu** je v Nastavení. Každý tým má úplně oddělená data pod vlastním klíčem (`junior-v1-A`, `junior-v1-B`): kádr, sestavy, zápasy, minuty, rozpracovanou sestavu i nastavení. Aktivní tým je v `junior-team`. Přepnutí appku znovu načte, protože zustand store se vytváří nad konkrétním klíčem (`lib/team.ts`). Původní data z `junior-v1` se při prvním startu přesunou pod tým B.
+- **Kádr přijímá jen hráče z druhého týmu** („+ Přidat hráče z týmu A/B“ čte kádr druhého týmu ze storage, nebo jeho seed). Hostující hráč má žlutý štítek s písmenem domovského týmu a v původním týmu zůstává. Volné přidávání hráčů podle zadání není – kdyby přišel nový kluk, přidá se do seedu nebo importem.
+- **Áčko** (Gabriel, Marián, Sam, Matěj, Oski, Kotě, Mára, Patrik, Vašek, Vojta, Petr, Filip, Vondris) je naseedované **bez postů**: v kádru je sekce „Bez postu“, editor dovolí posty doplnit. Hráč bez postu má v návrzích neutrální fit (hodí se kamkoli, nikde přednostně).
+- **Export/import** je per tým: soubor `junior-A-<datum>.json` nese `team`, import do jiného týmu se odmítne s vysvětlením.
+- Hlavičky obrazovek mají zlatý štítek s písmenem aktivního týmu.
 
 ## Dodatek k zadání: rotace lavičky (fáze 5 + 6)
 

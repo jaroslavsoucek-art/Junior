@@ -1,6 +1,7 @@
 import type { Formation, FormationSlot, Player, PositionRole } from '../types';
 
-export const SEED_PLAYERS: Player[] = [
+// Tým B – původní kádr.
+const B_RAW: Player[] = [
   // Brána
   { id: 'adis', name: 'Adis', roles: ['GK'], active: true },
   { id: 'nik', name: 'Nik', roles: ['GK'], active: true },
@@ -22,6 +23,34 @@ export const SEED_PLAYERS: Player[] = [
   { id: 'ondra', name: 'Ondra', roles: ['FWD'], active: true },
   { id: 'marian', name: 'Marian', roles: ['FWD'], active: true },
 ];
+export const SEED_PLAYERS_B: Player[] = B_RAW.map((p) => ({ ...p, team: 'B' as const }));
+
+// Tým A – posty zatím nezadané (doplní trenér v editoru hráče).
+export const SEED_PLAYERS_A: Player[] = [
+  'Gabriel',
+  'Marián',
+  'Sam',
+  'Matěj',
+  'Oski',
+  'Kotě',
+  'Mára',
+  'Patrik',
+  'Vašek',
+  'Vojta',
+  'Petr',
+  'Filip',
+  'Vondris',
+].map((name) => ({
+  id: `a-${name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()}`,
+  name,
+  roles: [] as PositionRole[],
+  active: true,
+  team: 'A' as const,
+}));
+
+export const SEED_PLAYERS_BY_TEAM = { A: SEED_PLAYERS_A, B: SEED_PLAYERS_B };
+/** @deprecated use SEED_PLAYERS_BY_TEAM – kept for tests */
+export const SEED_PLAYERS = SEED_PLAYERS_B;
 
 // y: 0 = vlastní branka, 1 = soupeřova. x: 0 = levá lajna, 1 = pravá.
 type SlotSpec = [role: PositionRole, x: number, y: number];

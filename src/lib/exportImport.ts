@@ -8,18 +8,19 @@ export type ExportFile = {
   schema: typeof EXPORT_SCHEMA;
   version: number;
   exportedAt: string;
+  team?: 'A' | 'B';
   data: AppData;
 };
 
-export function buildExport(data: AppData, now = new Date()): ExportFile {
-  return { schema: EXPORT_SCHEMA, version: EXPORT_VERSION, exportedAt: now.toISOString(), data };
+export function buildExport(data: AppData, now = new Date(), team?: 'A' | 'B'): ExportFile {
+  return { schema: EXPORT_SCHEMA, version: EXPORT_VERSION, exportedAt: now.toISOString(), team, data };
 }
 
-export function exportFileName(now = new Date()): string {
-  return `junior-${now.toISOString().slice(0, 10)}.json`;
+export function exportFileName(now = new Date(), team?: 'A' | 'B'): string {
+  return `junior${team ? `-${team}` : ''}-${now.toISOString().slice(0, 10)}.json`;
 }
 
-export type ParseResult = { ok: true; data: AppData; exportedAt: string | null } | { ok: false; error: string };
+export type ParseResult = { ok: true; data: AppData; exportedAt: string | null; team: 'A' | 'B' | null } | { ok: false; error: string };
 
 /** Strict-enough validation: we refuse anything that would crash the app later. */
 export function parseImport(text: string): ParseResult {
@@ -35,6 +36,7 @@ export function parseImport(text: string): ParseResult {
   const wrapped = raw.schema === EXPORT_SCHEMA && isObj(raw.data);
   const data = wrapped ? (raw.data as Record<string, unknown>) : raw;
   const exportedAt = wrapped && typeof raw.exportedAt === 'string' ? raw.exportedAt : null;
+  const team = wrapped && (raw.team === 'A' || raw.team === 'B') ? raw.team : null;
 
   if (wrapped && typeof raw.version === 'number' && raw.version > EXPORT_VERSION) {
     return { ok: false, error: `Soubor je z novější verze appky (v${raw.version}).` };
@@ -76,6 +78,7 @@ export function parseImport(text: string): ParseResult {
   return {
     ok: true,
     exportedAt,
+    team,
     data: {
       players: players as AppData['players'],
       formations: data.formations as AppData['formations'],

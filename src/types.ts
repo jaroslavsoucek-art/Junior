@@ -3,8 +3,9 @@ export type PositionRole = 'GK' | 'DEF' | 'MID_C' | 'MID_W' | 'FWD';
 export type Player = {
   id: string;
   name: string;
-  roles: PositionRole[]; // hráč může mít víc rolí
+  roles: PositionRole[]; // hráč může mít víc rolí; prázdné = post zatím nezadán
   active: boolean; // trvale v kádru (ne docházka)
+  team?: 'A' | 'B'; // domovský tým hráče (hostující hráč z druhého týmu má jiný než aktivní)
 };
 
 export type FormationSlot = {
