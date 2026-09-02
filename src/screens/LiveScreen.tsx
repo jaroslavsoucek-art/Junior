@@ -11,7 +11,8 @@ import { useWakeLock } from '../hooks/useWakeLock';
 import { clockState, computeMinutes, formatClock, onPitch as computeOnPitch, periodElapsedSec } from '../lib/minutes';
 import { computeLoad, playSecondsSince, proposeFromPlan, rotationAnchor, sanitizeGroups, type RotationInput, type RotationPair } from '../lib/rotation';
 import { DetailHeader } from '../components/ScreenHeader';
-import { IconBack, IconPause, IconPencil, IconPlay, IconRotate, IconTimer } from '../components/icons';
+import logo from '../assets/logo.png';
+import { IconBack, IconPause, IconPencil, IconPlay, IconRotate } from '../components/icons';
 import { startingLineup } from '../lib/match';
 import { roleFit } from '../lib/lineup';
 import type { Formation, Match, Player } from '../types';
@@ -41,6 +42,7 @@ export function LiveScreen() {
     );
   }
   if (match.status === 'planned') return <PreMatch match={match} />;
+  if (match.status === 'finished') return <FinishedView match={match} />;
   return <LiveMatch match={match} />;
 }
 
@@ -60,27 +62,113 @@ function PreMatch({ match }: { match: Match }) {
     setTab('match');
   };
   return (
-    <div className="flex h-full flex-col px-[18px] pb-5 pt-[18px]">
-      <DetailHeader title={`vs ${match.opponent}`} subtitle={`${match.halvesCount}×${match.halfLengthMin} min · rotace každých ${match.rotationIntervalMin} min · k dispozici ${match.availablePlayerIds.length}`} onBack={back} />
-      <div className="rounded-[22px] border border-line bg-surface p-4">
-        <p className={`text-[17px] font-extrabold ${ready ? 'text-heading' : 'text-accent-text'}`}>Startovní osmička: {starting.filled} / 8</p>
-        {!ready && <p className="mt-1 text-[13px] text-muted">Doplň sestavu v detailu zápasu.</p>}
-        {starting.formation && (
-          <p className="mt-1 text-[13px] font-medium text-muted">
-            {starting.formation.name} ·{' '}
-            {starting.formation.slots
-              .map((sl) => starting.assignments[sl.id])
-              .filter(Boolean)
-              .map((id) => players.find((p) => p.id === id)?.name)
-              .join(', ')}
+    <div className="flex h-full flex-col px-[18px] pb-5 pt-5">
+      <div className="mb-[18px] flex items-center gap-3">
+        <div className="flex size-11 shrink-0 items-center justify-center rounded-[14px] border border-line bg-surface">
+          <img src={logo} alt="SK Junior Praha" className="size-8 object-contain" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate text-[24px] font-extrabold tracking-[-0.02em] text-heading">vs {match.opponent}</h1>
+          <p className="mt-0.5 text-[13px] font-medium text-muted">
+            {match.halvesCount}×{match.halfLengthMin} min · rotace {match.rotationIntervalMin} min · k dispozici {match.availablePlayerIds.length}
           </p>
-        )}
+        </div>
       </div>
-      <button type="button" disabled={!ready} onClick={() => startMatch(match.id)} className="tap mt-4 flex min-h-[64px] w-full items-center justify-center gap-2.5 rounded-[20px] bg-accent text-white disabled:opacity-40" style={ready ? { boxShadow: '0 8px 24px rgba(164,23,42,0.3)' } : undefined}>
-        <IconTimer size={22} />
-        <span className="text-[18px] font-extrabold tracking-[-0.01em]">Zahájit zápas</span>
+
+      <div className="mb-3.5 rounded-[22px] border border-line bg-surface p-[18px]">
+        <div className="mb-2.5 flex items-center justify-between gap-2.5">
+          <span className="eyebrow">Startovní osmička</span>
+          <span className={`tabular text-[15px] font-extrabold ${ready ? 'text-role-midc-text' : 'text-accent-text'}`}>{starting.filled} / 8</span>
+        </div>
+        <p className="text-[14px] font-semibold leading-[1.5] text-ink">
+          {starting.formation ? `${starting.formation.name} · ` : ''}
+          {starting.formation
+            ? starting.formation.slots
+                .map((sl) => starting.assignments[sl.id])
+                .filter(Boolean)
+                .map((id) => players.find((p) => p.id === id)?.name)
+                .join(', ')
+            : 'Sestava není vybraná.'}
+        </p>
+        {!ready && <p className="mt-2 text-[12px] font-bold text-accent-text">Doplň sestavu v přípravě zápasu.</p>}
+      </div>
+
+      <div className="mb-3.5 rounded-[22px] bg-primary p-[18px] text-white">
+        <span className="text-[11px] font-extrabold uppercase tracking-[0.12em] opacity-80">Čas půle</span>
+        <p className="tabular mt-1 text-[46px] font-black leading-none tracking-[-0.03em] opacity-55">00:00</p>
+        <p className="mt-1.5 text-[12px] font-semibold opacity-80">Zahájení nasadí osmičku na hřiště. Hodiny spustíš až tlačítkem Start 1. půle.</p>
+      </div>
+
+      <button type="button" disabled={!ready} onClick={() => startMatch(match.id)} className="tap min-h-[68px] w-full rounded-[20px] bg-accent text-[19px] font-extrabold tracking-[-0.01em] text-white disabled:opacity-40" style={ready ? { boxShadow: '0 8px 24px rgba(164,23,42,0.28)' } : undefined}>
+        Zahájit zápas
       </button>
-      <p className="mt-2 text-center text-[12px] font-semibold text-muted">Nasadí osmičku na hřiště. Čas půle spustíš až pak tlačítkem Start.</p>
+
+      <button type="button" onClick={back} className="tap mt-auto min-h-[52px] w-full rounded-[18px] border border-line-2 bg-surface text-[14px] font-bold text-ink">
+        ← Zpět na přípravu
+      </button>
+    </div>
+  );
+}
+
+/** Finished match: summary card + load list inline (design „Live – dohráno“). */
+function FinishedView({ match }: { match: Match }) {
+  const players = useStore((s) => s.players);
+  const setTab = useStore((s) => s.setTab);
+  const openMatchDetail = useStore((s) => s.openMatchDetail);
+  const [showAll, setShowAll] = useState(false);
+  const last = match.events.reduce((a, e) => Math.max(a, e.at), 0);
+  const seconds = computeMinutes(match, last);
+  const total = Array.from({ length: match.halvesCount }, (_, i) => periodElapsedSec(match, i + 1, last)).reduce((a, b) => a + b, 0);
+  const onPitchIds = new Set(Object.values(computeOnPitch(match.events)));
+  const available = match.availablePlayerIds.filter((id) => players.some((p) => p.id === id));
+  const { avg, rows } = computeLoad(available, seconds);
+  const byId = new Map(players.map((p) => [p.id, p]));
+  const visible = showAll ? rows : rows.slice(0, 8);
+  const dev = (d: number) => {
+    const m = Math.round(d / 60);
+    return m === 0 ? '±0 min' : m > 0 ? `+${m} min` : `−${-m} min`;
+  };
+  return (
+    <div className="h-full overflow-y-auto px-[18px] pb-5 pt-5">
+      <div className="mb-3.5 rounded-[22px] border border-line bg-surface p-4">
+        <div className="flex items-center justify-between gap-2.5">
+          <div className="min-w-0">
+            <span className="eyebrow block truncate">Dohráno · vs {match.opponent}</span>
+            <p className="tabular mt-1 text-[32px] font-black leading-none tracking-[-0.03em] text-heading">{formatClock(total)}</p>
+          </div>
+          <span className="shrink-0 rounded-full bg-role-midc/15 px-3 py-1.5 text-[11px] font-extrabold tracking-[0.06em] text-role-midc-text">V SEZÓNĚ</span>
+        </div>
+        <p className="mt-2.5 text-[12px] font-semibold text-muted">Minuty jsou zamčené a započítané do sezónního součtu na Kádru.</p>
+      </div>
+
+      <div className="mb-2.5 flex items-baseline justify-between">
+        <h2 className="eyebrow">Vytížení</h2>
+        <span className="tabular text-[12px] font-bold text-muted">průměr {formatClock(avg)} · ● na hřišti na konci</span>
+      </div>
+      <ul className="flex flex-col gap-1">
+        {visible.map((r) => (
+          <li key={r.playerId} className={`flex min-h-11 items-center gap-2.5 rounded-[14px] border px-3.5 py-1 ${r.low ? 'border-accent-line bg-accent-soft' : 'border-line bg-surface'}`}>
+            <span className={`size-2 shrink-0 rounded-full ${onPitchIds.has(r.playerId) ? 'bg-primary' : 'bg-ink/20'}`} aria-hidden />
+            <span className={`min-w-0 flex-1 truncate text-[15px] font-bold ${r.low ? 'text-accent-text' : 'text-ink'}`}>{byId.get(r.playerId)?.name ?? r.playerId}</span>
+            <span className={`tabular text-[15px] font-extrabold ${r.low ? 'text-accent-text' : 'text-ink'}`}>{formatClock(r.seconds)}</span>
+            <span className={`tabular w-[62px] text-right text-[12px] font-bold ${r.low ? 'text-accent-text' : 'text-muted'}`}>{dev(r.deviation)}</span>
+          </li>
+        ))}
+      </ul>
+      {rows.length > 8 && (
+        <button type="button" onClick={() => setShowAll((v) => !v)} className="tap mt-1.5 flex min-h-12 w-full items-center justify-center rounded-[14px] border border-dashed border-line-2 text-[13px] font-bold text-muted">
+          {showAll ? 'Sbalit' : `Zobrazit všech ${rows.length}`}
+        </button>
+      )}
+      <Btn
+        className="mt-4 min-h-[52px] w-full rounded-[18px]"
+        onClick={() => {
+          openMatchDetail(match.id);
+          setTab('match');
+        }}
+      >
+        ← Detail zápasu
+      </Btn>
     </div>
   );
 }

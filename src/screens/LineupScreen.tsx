@@ -285,6 +285,7 @@ function LineupEditor() {
       {modal === 'newMatch' && (
         <MatchForm
           title={`Nový zápas · ${draft.name}`}
+          submitLabel="Vytvořit zápas"
           initial={{
             opponent: '',
             date: todayISO(),
@@ -305,7 +306,8 @@ function LineupEditor() {
       {modal === 'saveAs' && (
         <NamePrompt
           title="Uložit sestavu jako"
-          placeholder="základ, bez Ondry, na silného soupeře…"
+          subtitle="Například základ, bez Ondry, na silného soupeře"
+          placeholder="základ"
           onConfirm={(name) => {
             act.saveDraftAs(name);
             setModal(null);

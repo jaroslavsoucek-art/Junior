@@ -5,7 +5,7 @@ import { ROLE_BG } from '../lib/roleStyles';
 import { Btn, Modal } from '../components/Modal';
 import { ScreenHeader, IconButton } from '../components/ScreenHeader';
 import { Segmented } from '../components/Segmented';
-import { IconChevronRight, IconGear, IconPlus } from '../components/icons';
+import { IconChevronDown, IconChevronRight, IconGear, IconPlus } from '../components/icons';
 import { PlayerEditor } from '../components/PlayerEditor';
 import { SettingsScreen } from './SettingsScreen';
 import { seasonSeconds } from '../lib/season';
@@ -93,21 +93,29 @@ export function RosterScreen() {
         <IconPlus />
         Přidat hráče z týmu {other}
       </Btn>
-      <p className="mt-2 text-center text-[11px] font-semibold text-faint">Hostující hráč zůstává i v kádru týmu {other}</p>
 
       {inactive.length > 0 && (
-        <div className="mt-6">
-          <button type="button" onClick={() => setShowInactive((v) => !v)} className="tap flex w-full items-center justify-between rounded-[18px] border border-line bg-surface px-4 text-left" aria-expanded={showInactive}>
+        <div className="mt-4 rounded-[22px] border border-line bg-surface p-4">
+          <button type="button" onClick={() => setShowInactive((v) => !v)} className="tap flex min-h-12 w-full items-center justify-between text-left" aria-expanded={showInactive}>
             <span className="text-[14px] font-bold text-ink">Mimo kádr</span>
             <span className="flex items-center gap-2 text-[12px] font-bold text-muted">
-              {inactive.length} <IconChevronRight className={`text-chev transition-transform ${showInactive ? 'rotate-90' : ''}`} size={16} />
+              {inactive.length} <IconChevronDown className={`text-chev transition-transform ${showInactive ? 'rotate-180' : ''}`} />
             </span>
           </button>
           {showInactive && (
-            <ul className="mt-2 flex flex-col gap-2 opacity-70">
-              {inactive.map((p) => (
-                <PlayerRow key={p.id} player={p} seconds={season[p.id] ?? 0} maxSec={maxSec} low={false} onTap={() => setEditing(p)} />
-              ))}
+            <ul className="mt-2.5 flex flex-col gap-2 opacity-60">
+              {inactive.map((p) => {
+                const r = primaryRole(p);
+                return (
+                  <li key={p.id}>
+                    <button type="button" onClick={() => setEditing(p)} className="tap flex min-h-14 w-full items-center gap-3 rounded-2xl border border-line px-3 text-left">
+                      {r ? <RoleSquare role={r} size={34} /> : <span className="size-[34px]" />}
+                      <span className="min-w-0 flex-1 truncate text-[15px] font-bold text-ink">{p.name}</span>
+                      <span className="tabular text-[12px] font-bold text-muted">{Math.floor((season[p.id] ?? 0) / 60)}′</span>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>

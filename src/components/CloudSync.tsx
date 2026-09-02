@@ -134,103 +134,89 @@ export function CloudSync({ onNotice }: { onNotice: (msg: string) => void }) {
         </p>
       )}
 
-      {/* 2. club code */}
+      {/* 2. club code + actions (design: code field with Sdílet inside, Nahrát / Stáhnout row, last sync line) */}
       {source && (
-        <div className="flex flex-col gap-2">
-          <label className="flex flex-col gap-1">
-            <span className="text-sm font-semibold text-muted">Kód klubu (stejný na všech telefonech)</span>
-            <div className="flex gap-2">
-              <input
-                value={codeInput}
-                onChange={(e) => setCodeInput(e.target.value)}
-                onBlur={() => {
-                  const c = normalizeClubCode(codeInput);
+        <>
+          <p className="text-[13px] font-medium text-muted">Kód klubu sdílí data s kolegy. Poslední nahrání vyhrává, nic se neslučuje.</p>
+          <div className="flex min-h-[52px] items-center gap-2 rounded-2xl border border-line-2 bg-surface-3 px-3.5">
+            <input
+              value={codeInput}
+              onChange={(e) => setCodeInput(e.target.value)}
+              onBlur={() => {
+                const c = normalizeClubCode(codeInput);
+                setCodeInput(c);
+                if (c !== code) {
+                  updateSettings({ clubCode: c, lastDownloadAt: undefined, lastUploadAt: undefined });
+                  setMeta(null);
+                }
+              }}
+              placeholder="vygeneruj nebo vlož kód od kolegy"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              aria-label="Kód klubu"
+              className="min-w-0 flex-1 bg-transparent font-mono text-[14px] font-bold tracking-[0.06em] text-ink outline-none"
+            />
+            {!code ? (
+              <button
+                type="button"
+                onClick={() => {
+                  const c = generateClubCode();
                   setCodeInput(c);
-                  if (c !== code) {
-                    updateSettings({ clubCode: c, lastDownloadAt: undefined, lastUploadAt: undefined });
-                    setMeta(null);
+                  updateSettings({ clubCode: c });
+                }}
+                className="tap min-h-10 rounded-xl bg-primary/10 px-3 text-[12px] font-bold text-heading"
+              >
+                Vygenerovat
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    if (navigator.share) await navigator.share({ title: 'Kód klubu Junior 2014', text: code });
+                    else {
+                      await navigator.clipboard.writeText(code);
+                      onNotice('Kód zkopírován');
+                    }
+                  } catch {
+                    /* cancelled */
                   }
                 }}
-                placeholder="vygeneruj nebo vlož od kolegy"
-                autoCapitalize="off"
-                autoCorrect="off"
-                spellCheck={false}
-                className="tap min-w-0 flex-1 rounded-xl border border-line-2 bg-surface px-3 font-mono text-base text-ink"
-              />
-              {!code && (
-                <Btn
-                  onClick={() => {
-                    const c = generateClubCode();
-                    setCodeInput(c);
-                    updateSettings({ clubCode: c });
-                  }}
-                >
-                  Vygenerovat
+                className="tap min-h-10 rounded-xl bg-primary/10 px-3 text-[12px] font-bold text-heading"
+              >
+                Sdílet
+              </button>
+            )}
+          </div>
+          {code && !isValidClubCode(code) && <p className="text-[13px] font-bold text-accent-text">Kód musí mít 16–64 znaků (písmena a číslice).</p>}
+          {ready && (
+            <>
+              <div className="flex gap-2">
+                <Btn kind="primary" className="min-h-[52px] flex-1 rounded-2xl" disabled={busy !== null} onClick={() => (cloudNewerThanMine ? setConfirmUp(true) : void doUpload())}>
+                  {busy === 'up' ? 'Nahrávám…' : 'Nahrát do cloudu'}
                 </Btn>
-              )}
-              {code && (
-                <Btn
-                  onClick={async () => {
-                    try {
-                      if (navigator.share) await navigator.share({ title: 'Kód klubu Junior 2014', text: code });
-                      else {
-                        await navigator.clipboard.writeText(code);
-                        onNotice('Kód zkopírován');
-                      }
-                    } catch {
-                      /* cancelled */
-                    }
-                  }}
-                >
-                  Sdílet
+                <Btn className="min-h-[52px] flex-1 rounded-2xl" disabled={busy !== null} onClick={() => void startDownload()}>
+                  {busy === 'down' ? 'Stahuji…' : 'Stáhnout'}
                 </Btn>
-              )}
-            </div>
+              </div>
+              {cloudNewerThanMine && <p className="text-[12px] font-bold text-accent-text">V cloudu je novější verze, než jsi naposledy stáhl. Nahráním bys ji přepsal.</p>}
+              <p className="text-[11px] font-semibold text-faint">
+                {busy === 'meta' ? 'Načítám stav cloudu…' : meta === 'none' ? 'V cloudu zatím nic.' : meta ? `Naposledy nahráno ${fmt(meta.updatedAt)} · ${meta.device}` : 'Stav cloudu neznámý.'}
+                {settings.lastDownloadAt ? ` · tento telefon stáhl ${fmt(settings.lastDownloadAt)}` : ''}
+                <button type="button" className="ml-2 underline" onClick={() => void refreshMeta()}>
+                  obnovit
+                </button>
+              </p>
+            </>
+          )}
+          <label className="flex min-h-11 items-center justify-between gap-3">
+            <span className="text-[13px] font-semibold text-muted">Název tohoto telefonu</span>
+            <input value={settings.deviceName ?? ''} placeholder={defaultDeviceName()} onChange={(e) => updateSettings({ deviceName: e.target.value })} className="tap w-40 rounded-xl border border-line-2 bg-surface px-3 text-[14px] text-ink" />
           </label>
-          {code && !isValidClubCode(code) && <p className="text-sm font-semibold text-accent-text">Kód musí mít 16–64 znaků (písmena a číslice).</p>}
-          <label className="flex items-center justify-between gap-3">
-            <span className="text-sm font-semibold text-muted">Název tohoto telefonu</span>
-            <input
-              value={settings.deviceName ?? ''}
-              placeholder={defaultDeviceName()}
-              onChange={(e) => updateSettings({ deviceName: e.target.value })}
-              className="tap w-40 rounded-xl border border-line-2 bg-surface px-3 text-base text-ink"
-            />
-          </label>
-        </div>
+        </>
       )}
 
-      {/* 3. status + actions */}
-      {ready && (
-        <div className="flex flex-col gap-2 rounded-2xl bg-surface-3 p-3 text-sm">
-          <div className="flex justify-between">
-            <span className="text-muted">V cloudu (tým {ACTIVE_TEAM})</span>
-            <span className="font-semibold tabular-nums">
-              {busy === 'meta' ? 'načítám…' : meta === 'none' ? 'nic' : meta ? `${fmt(meta.updatedAt)} · ${meta.device}` : '—'}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted">Tento telefon stáhl</span>
-            <span className="tabular-nums">{fmt(settings.lastDownloadAt)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted">Tento telefon nahrál</span>
-            <span className="tabular-nums">{fmt(settings.lastUploadAt)}</span>
-          </div>
-          {cloudNewerThanMine && <p className="font-semibold text-accent-text">V cloudu je novější verze, než jsi naposledy stáhl. Nahráním bys ji přepsal.</p>}
-          <div className="mt-1 flex gap-2">
-            <Btn kind="primary" className="flex-1" disabled={busy !== null} onClick={() => (cloudNewerThanMine ? setConfirmUp(true) : void doUpload())}>
-              {busy === 'up' ? 'Nahrávám…' : '⬆ Nahrát do cloudu'}
-            </Btn>
-            <Btn className="flex-1" disabled={busy !== null} onClick={() => void startDownload()}>
-              {busy === 'down' ? 'Stahuji…' : '⬇ Stáhnout z cloudu'}
-            </Btn>
-          </div>
-          <button type="button" className="tap self-end text-xs text-muted underline" onClick={() => void refreshMeta()}>
-            obnovit stav
-          </button>
-        </div>
-      )}
       {error && <p className="rounded-xl bg-accent-soft px-3 py-2 text-sm font-semibold text-accent-text">{error}</p>}
 
       {configOpen && (

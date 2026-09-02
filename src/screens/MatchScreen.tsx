@@ -138,6 +138,7 @@ function MatchList() {
       {creating && (
         <MatchForm
           title="Nový zápas"
+          submitLabel="Vytvořit zápas"
           initial={{ opponent: '', date: todayISO(), halfLengthMin: settings.defaultHalfLengthMin, halvesCount: settings.defaultHalvesCount, rotationIntervalMin: settings.defaultRotationIntervalMin, rotateGoalkeeper: false }}
           onSave={(input) => {
             createMatch(input);
