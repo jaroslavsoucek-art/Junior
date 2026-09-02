@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Btn, Modal } from './Modal';
+import { NumInput } from './NumInput';
 import type { MatchInput } from '../store';
 import { todayISO } from '../lib/match';
 
@@ -15,10 +16,6 @@ export function MatchForm({
   onClose: () => void;
 }) {
   const [v, setV] = useState<MatchInput>(initial);
-  const num = (raw: string, min: number, max: number, fallback: number) => {
-    const n = parseInt(raw, 10);
-    return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
-  };
   const valid = v.opponent.trim().length > 0 && v.date.length > 0;
 
   return (
@@ -50,9 +47,9 @@ export function MatchForm({
           />
         </label>
         <div className="grid grid-cols-2 gap-3">
-          <NumField label="Délka půle (min)" value={v.halfLengthMin} onChange={(r) => setV({ ...v, halfLengthMin: num(r, 5, 60, v.halfLengthMin) })} />
-          <NumField label="Počet půlí" value={v.halvesCount} onChange={(r) => setV({ ...v, halvesCount: num(r, 1, 4, v.halvesCount) })} />
-          <NumField label="Rotace každých (min)" value={v.rotationIntervalMin} onChange={(r) => setV({ ...v, rotationIntervalMin: num(r, 1, 30, v.rotationIntervalMin) })} />
+          <NumField label="Délka půle (min)" value={v.halfLengthMin} min={5} max={60} onChange={(n) => setV((x) => ({ ...x, halfLengthMin: n }))} />
+          <NumField label="Počet půlí" value={v.halvesCount} min={1} max={4} onChange={(n) => setV((x) => ({ ...x, halvesCount: n }))} />
+          <NumField label="Rotace každých (min)" value={v.rotationIntervalMin} min={1} max={30} onChange={(n) => setV((x) => ({ ...x, rotationIntervalMin: n }))} />
           <button
             type="button"
             onClick={() => setV({ ...v, rotateGoalkeeper: !v.rotateGoalkeeper })}
@@ -75,17 +72,11 @@ export function MatchForm({
   );
 }
 
-function NumField({ label, value, onChange }: { label: string; value: number; onChange: (raw: string) => void }) {
+function NumField({ label, value, min, max, onChange }: { label: string; value: number; min: number; max: number; onChange: (n: number) => void }) {
   return (
     <label className="flex flex-col gap-1">
       <span className="text-sm font-semibold text-ink-muted">{label}</span>
-      <input
-        type="number"
-        inputMode="numeric"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="tap rounded-xl border border-ink/20 bg-white px-4 text-lg tabular-nums"
-      />
+      <NumInput value={value} min={min} max={max} onChange={onChange} className="px-4" ariaLabel={label} />
     </label>
   );
 }

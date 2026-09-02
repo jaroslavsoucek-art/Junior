@@ -4,6 +4,7 @@ import { switchTeamAndReload, TEAMS } from '../lib/team';
 import { Btn, Confirm, Modal } from '../components/Modal';
 import { buildExport, exportFileName, parseImport, previewImport, type ImportPreview } from '../lib/exportImport';
 import { CloudSync } from '../components/CloudSync';
+import { NumInput } from '../components/NumInput';
 
 export function SettingsScreen({ onBack }: { onBack: () => void }) {
   const settings = useStore((s) => s.settings);
@@ -57,10 +58,6 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
     if (fileRef.current) fileRef.current.value = '';
   }
 
-  const num = (v: string, min: number, max: number) => {
-    const n = parseInt(v, 10);
-    return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : min;
-  };
 
   return (
     <div className="px-4 pb-6">
@@ -89,21 +86,9 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
       </Section>
 
       <Section title="Výchozí hodnoty pro nový zápas">
-        <NumberField
-          label="Délka půle (min)"
-          value={settings.defaultHalfLengthMin}
-          onChange={(v) => updateSettings({ defaultHalfLengthMin: num(v, 5, 60) })}
-        />
-        <NumberField
-          label="Počet půlí"
-          value={settings.defaultHalvesCount}
-          onChange={(v) => updateSettings({ defaultHalvesCount: num(v, 1, 4) })}
-        />
-        <NumberField
-          label="Interval rotace (min)"
-          value={settings.defaultRotationIntervalMin}
-          onChange={(v) => updateSettings({ defaultRotationIntervalMin: num(v, 1, 30) })}
-        />
+        <NumberField label="Délka půle (min)" value={settings.defaultHalfLengthMin} min={5} max={60} onChange={(n) => updateSettings({ defaultHalfLengthMin: n })} />
+        <NumberField label="Počet půlí" value={settings.defaultHalvesCount} min={1} max={4} onChange={(n) => updateSettings({ defaultHalvesCount: n })} />
+        <NumberField label="Interval rotace (min)" value={settings.defaultRotationIntervalMin} min={1} max={30} onChange={(n) => updateSettings({ defaultRotationIntervalMin: n })} />
       </Section>
 
       <Section title="Sdílení mezi telefony (cloud)">
@@ -227,17 +212,11 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function NumberField({ label, value, onChange }: { label: string; value: number; onChange: (v: string) => void }) {
+function NumberField({ label, value, min, max, onChange }: { label: string; value: number; min: number; max: number; onChange: (n: number) => void }) {
   return (
     <label className="flex items-center justify-between gap-3">
       <span className="font-semibold">{label}</span>
-      <input
-        type="number"
-        inputMode="numeric"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="tap w-24 rounded-xl border border-ink/20 bg-paper px-3 text-right text-lg tabular-nums"
-      />
+      <NumInput value={value} min={min} max={max} onChange={onChange} className="w-24 bg-paper text-right" ariaLabel={label} />
     </label>
   );
 }

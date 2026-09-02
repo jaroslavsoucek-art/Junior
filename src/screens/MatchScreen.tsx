@@ -160,7 +160,7 @@ function MatchDetail({ match, onBack }: { match: Match; onBack: () => void }) {
             {match.rotateGoalkeeper ? ' vč. GK' : ''}
           </p>
         </div>
-        {!locked && (
+        {match.status !== 'finished' && (
           <button type="button" onClick={() => setEditing(true)} className="tap rounded-xl px-3 font-semibold text-primary" aria-label="Upravit zápas">
             Upravit
           </button>
