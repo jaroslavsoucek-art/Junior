@@ -73,6 +73,7 @@ export function parseImport(text: string): ParseResult {
     defaultHalvesCount: num(settings.defaultHalvesCount, 2),
     defaultRotationIntervalMin: num(settings.defaultRotationIntervalMin, 5),
     wakeLockNoticeShown: settings.wakeLockNoticeShown === true,
+    ...(settings.theme === 'light' || settings.theme === 'dark' || settings.theme === 'system' ? { theme: settings.theme as 'light' | 'dark' | 'system' } : {}),
     ...(typeof settings.clubCode === 'string' ? { clubCode: settings.clubCode } : {}),
     ...(typeof settings.deviceName === 'string' ? { deviceName: settings.deviceName } : {}),
   };

@@ -1,19 +1,26 @@
 import { useMemo, useState } from 'react';
 import { ACTIVE_TEAM, useStore } from '../store';
-import { NoRoleChip, RoleChip, TeamChip } from '../components/RoleChip';
+import { NoRoleChip, RoleChip, RoleSquare, TeamTag } from '../components/RoleChip';
+import { ROLE_BG } from '../lib/roleStyles';
 import { Btn, Modal } from '../components/Modal';
+import { ScreenHeader, IconButton } from '../components/ScreenHeader';
+import { Segmented } from '../components/Segmented';
+import { IconChevronRight, IconGear, IconPlus } from '../components/icons';
+import { PlayerEditor } from '../components/PlayerEditor';
+import { SettingsScreen } from './SettingsScreen';
+import { seasonSeconds } from '../lib/season';
+import { computeLoad } from '../lib/rotation';
 import { otherTeam, readTeamPlayers } from '../lib/team';
 import { SEED_PLAYERS_BY_TEAM } from '../data/seed';
-import { PlayerEditor } from '../components/PlayerEditor';
-import { ScreenHeader } from '../components/ScreenHeader';
-import { SettingsScreen } from './SettingsScreen';
-import { formatMinutes, seasonSeconds } from '../lib/season';
 import { ALL_ROLES, ROLE_LABEL, type Player, type PositionRole } from '../types';
 
 type Sort = 'position' | 'minutes';
 const ROLE_ORDER: Record<PositionRole, number> = { GK: 0, DEF: 1, MID_C: 2, MID_W: 3, FWD: 4 };
 const primaryRole = (p: Player): PositionRole | null => [...p.roles].sort((a, b) => ROLE_ORDER[a] - ROLE_ORDER[b])[0] ?? null;
-const roleRank = (p: Player) => { const r = primaryRole(p); return r ? ROLE_ORDER[r] : 9; };
+const roleRank = (p: Player) => {
+  const r = primaryRole(p);
+  return r ? ROLE_ORDER[r] : 9;
+};
 
 export function RosterScreen() {
   const players = useStore((s) => s.players);
@@ -22,89 +29,93 @@ export function RosterScreen() {
   const updatePlayer = useStore((s) => s.updatePlayer);
 
   const [sort, setSort] = useState<Sort>('position');
-  const [editing, setEditing] = useState<Player | null | 'new'>(null);
+  const [editing, setEditing] = useState<Player | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showInactive, setShowInactive] = useState(false);
   const [pickFromOther, setPickFromOther] = useState(false);
   const other = otherTeam(ACTIVE_TEAM);
 
   const season = useMemo(() => seasonSeconds(matches), [matches]);
+  const finished = matches.filter((m) => m.status === 'finished').length;
   const byName = (a: Player, b: Player) => a.name.localeCompare(b.name, 'cs');
 
   const active = useMemo(() => {
     const list = players.filter((p) => p.active);
-    return sort === 'position'
-      ? list.sort((a, b) => roleRank(a) - roleRank(b) || byName(a, b))
-      : list.sort((a, b) => (season[a.id] ?? 0) - (season[b.id] ?? 0) || byName(a, b));
+    return sort === 'position' ? list.sort((a, b) => roleRank(a) - roleRank(b) || byName(a, b)) : list.sort((a, b) => (season[a.id] ?? 0) - (season[b.id] ?? 0) || byName(a, b));
   }, [players, sort, season]);
   const inactive = useMemo(() => players.filter((p) => !p.active).sort(byName), [players]);
+  const maxSec = useMemo(() => Math.max(1, ...active.map((p) => season[p.id] ?? 0)), [active, season]);
+  const lowIds = useMemo(() => new Set(computeLoad(active.map((p) => p.id), season).rows.filter((r) => r.low).map((r) => r.playerId)), [active, season]);
 
   if (showSettings) return <SettingsScreen onBack={() => setShowSettings(false)} />;
 
-  // Position sort renders group headings: Brankář, Obrana, Střed, Křídlo, Útok.
   const groups: { role: PositionRole | 'none' | null; items: Player[] }[] =
     sort === 'position'
-      ? [
-          ...ALL_ROLES.map((role) => ({ role, items: active.filter((p) => primaryRole(p) === role) })),
-          { role: 'none' as const, items: active.filter((p) => primaryRole(p) === null) },
-        ].filter((g) => g.items.length)
+      ? [...ALL_ROLES.map((role) => ({ role, items: active.filter((p) => primaryRole(p) === role) })), { role: 'none' as const, items: active.filter((p) => primaryRole(p) === null) }].filter((g) => g.items.length)
       : [{ role: null, items: active }];
-  const otherPlayers = pickFromOther
-    ? readTeamPlayers(other, SEED_PLAYERS_BY_TEAM[other]).filter((p) => !players.some((x) => x.id === p.id)).sort(byName)
-    : [];
+  const otherPlayers = pickFromOther ? readTeamPlayers(other, SEED_PLAYERS_BY_TEAM[other]).filter((p) => !players.some((x) => x.id === p.id)).sort(byName) : [];
 
   return (
-    <div className="px-4 pb-4">
+    <div className="px-[18px] pb-[100px] pt-5">
       <ScreenHeader
         title="Kádr"
-        subtitle={`SK Junior Praha · tým ${ACTIVE_TEAM} · ${active.length} hráčů`}
+        subtitle={`${active.length} hráčů · ${finished} ${finished === 1 ? 'zápas odehraný' : finished >= 2 && finished <= 4 ? 'zápasy odehrané' : 'zápasů odehraných'}`}
         right={
-          <button type="button" onClick={() => setShowSettings(true)} className="tap rounded-xl px-3 text-2xl" aria-label="Nastavení">
-            ⚙️
-          </button>
+          <IconButton onClick={() => setShowSettings(true)} label="Nastavení">
+            <IconGear />
+          </IconButton>
         }
       />
 
-      <div className="mb-3 flex gap-2 no-touch-fx" role="tablist" aria-label="Řazení">
-        {(
-          [
-            ['position', 'Podle postu'],
-            ['minutes', 'Podle minut ↑'],
-          ] as [Sort, string][]
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={sort === id}
-            onClick={() => setSort(id)}
-            className={`tap flex-1 rounded-xl border-2 px-3 font-semibold ${sort === id ? 'border-primary bg-primary text-white' : 'border-ink/20 bg-white'}`}
-          >
-            {label}
-          </button>
-        ))}
+      <div className="mb-[18px]">
+        <Segmented value={sort} onChange={setSort} options={[{ value: 'position', label: 'Podle postu' }, { value: 'minutes', label: 'Nejmíň minut' }]} />
       </div>
 
       {groups.map((g) => (
-        <section key={g.role ?? 'all'} className="mb-3">
+        <section key={g.role ?? 'all'} className="mb-5">
           {g.role && (
-            <h2 className="mb-1 px-1 text-xs font-bold uppercase tracking-wide text-ink-muted">{g.role === 'none' ? 'Bez postu' : ROLE_LABEL[g.role]}</h2>
+            <div className="mb-2.5 flex items-center gap-2">
+              {g.role !== 'none' && <span className={`size-2 rounded-full ${ROLE_BG[g.role]}`} aria-hidden />}
+              <h2 className="eyebrow">{g.role === 'none' ? 'Bez postu' : ROLE_LABEL[g.role]}</h2>
+              <span className="h-px flex-1 bg-line" />
+              <span className="text-[11px] font-bold text-faint">{g.items.length}</span>
+            </div>
           )}
           <ul className="flex flex-col gap-2">
             {g.items.map((p) => (
-              <PlayerRow key={p.id} player={p} seconds={season[p.id]} onTap={() => setEditing(p)} />
+              <PlayerRow key={p.id} player={p} seconds={season[p.id] ?? 0} maxSec={maxSec} low={lowIds.has(p.id)} onTap={() => setEditing(p)} />
             ))}
           </ul>
         </section>
       ))}
 
-      <Btn onClick={() => setPickFromOther(true)} className="mt-1 w-full">
-        + Přidat hráče z týmu {other}
+      <Btn kind="soft" className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-[18px]" onClick={() => setPickFromOther(true)}>
+        <IconPlus />
+        Přidat hráče z týmu {other}
       </Btn>
+      <p className="mt-2 text-center text-[11px] font-semibold text-faint">Hostující hráč zůstává i v kádru týmu {other}</p>
+
+      {inactive.length > 0 && (
+        <div className="mt-6">
+          <button type="button" onClick={() => setShowInactive((v) => !v)} className="tap flex w-full items-center justify-between rounded-[18px] border border-line bg-surface px-4 text-left" aria-expanded={showInactive}>
+            <span className="text-[14px] font-bold text-ink">Mimo kádr</span>
+            <span className="flex items-center gap-2 text-[12px] font-bold text-muted">
+              {inactive.length} <IconChevronRight className={`text-chev transition-transform ${showInactive ? 'rotate-90' : ''}`} size={16} />
+            </span>
+          </button>
+          {showInactive && (
+            <ul className="mt-2 flex flex-col gap-2 opacity-70">
+              {inactive.map((p) => (
+                <PlayerRow key={p.id} player={p} seconds={season[p.id] ?? 0} maxSec={maxSec} low={false} onTap={() => setEditing(p)} />
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {pickFromOther && (
-        <Modal title={`Hráči týmu ${other}`} onClose={() => setPickFromOther(false)}>
-          {otherPlayers.length === 0 && <p className="text-ink-muted">Všichni z týmu {other} už v tomto kádru jsou.</p>}
+        <Modal title={`Hráči týmu ${other}`} subtitle={`Přidají se do kádru týmu ${ACTIVE_TEAM} jako hostující, v týmu ${other} zůstávají`} onClose={() => setPickFromOther(false)}>
+          {otherPlayers.length === 0 && <p className="text-muted">Všichni z týmu {other} už v tomto kádru jsou.</p>}
           <ul className="flex flex-col gap-2">
             {otherPlayers.map((p) => (
               <li key={p.id}>
@@ -114,42 +125,23 @@ export function RosterScreen() {
                     addPlayer(p);
                     setPickFromOther(false);
                   }}
-                  className="tap flex w-full items-center justify-between rounded-xl border border-ink/10 bg-white px-4 text-left"
+                  className="tap flex min-h-14 w-full items-center justify-between rounded-[18px] border border-line bg-surface px-4 text-left"
                 >
-                  <span className="text-lg font-semibold">{p.name}</span>
-                  <span className="flex gap-1">
-                    {p.roles.length ? p.roles.map((r) => <RoleChip key={r} role={r} />) : <NoRoleChip />}
-                  </span>
+                  <span className="text-[16px] font-bold text-ink">{p.name}</span>
+                  <span className="flex gap-1">{p.roles.length ? p.roles.map((r) => <RoleChip key={r} role={r} />) : <NoRoleChip />}</span>
                 </button>
               </li>
             ))}
           </ul>
-          <p className="mt-3 text-xs text-ink-muted">Hráč se přidá do kádru týmu {ACTIVE_TEAM} jako hostující (žlutý štítek). V týmu {other} zůstává.</p>
         </Modal>
       )}
 
-      {inactive.length > 0 && (
-        <div className="mt-6">
-          <button type="button" onClick={() => setShowInactive((v) => !v)} className="tap flex w-full items-center justify-between px-1 text-ink-muted" aria-expanded={showInactive}>
-            <span className="font-semibold">Mimo kádr ({inactive.length})</span>
-            <span>{showInactive ? '▲' : '▼'}</span>
-          </button>
-          {showInactive && (
-            <ul className="mt-2 flex flex-col gap-2 opacity-70">
-              {inactive.map((p) => (
-                <PlayerRow key={p.id} player={p} seconds={season[p.id]} onTap={() => setEditing(p)} />
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-
-      {editing !== null && (
+      {editing && (
         <PlayerEditor
-          player={editing === 'new' ? null : editing}
+          player={editing}
           onClose={() => setEditing(null)}
           onSave={(name, roles, isActive) => {
-            if (editing !== 'new') updatePlayer(editing.id, { name, roles, active: isActive });
+            updatePlayer(editing.id, { name, roles, active: isActive });
             setEditing(null);
           }}
         />
@@ -158,18 +150,28 @@ export function RosterScreen() {
   );
 }
 
-function PlayerRow({ player, seconds, onTap }: { player: Player; seconds: number | undefined; onTap: () => void }) {
+function PlayerRow({ player, seconds, maxSec, low, onTap }: { player: Player; seconds: number; maxSec: number; low: boolean; onTap: () => void }) {
+  const role = primaryRole(player);
+  const pct = Math.round((seconds / maxSec) * 100);
+  const guest = player.team && player.team !== ACTIVE_TEAM;
   return (
     <li>
-      <button type="button" onClick={onTap} className="tap flex w-full items-center justify-between rounded-xl border border-ink/10 bg-white px-4 py-2 text-left">
-        <span className="flex flex-col">
-          <span className="text-lg font-semibold">{player.name}</span>
-          <span className="text-sm text-ink-muted">{formatMinutes(seconds)}</span>
+      <button type="button" onClick={onTap} className={`tap grid min-h-16 w-full grid-cols-[auto_1fr_auto] items-center gap-3 rounded-[18px] border bg-surface px-3.5 py-2.5 text-left ${low ? 'border-accent-line' : 'border-line'}`}>
+        {role ? <RoleSquare role={role} /> : <span className="flex size-[38px] items-center justify-center rounded-xl border border-dashed border-line-2 text-[11px] font-extrabold text-faint">?</span>}
+        <span className="flex min-w-0 flex-col gap-1.5">
+          <span className="flex items-center gap-1.5">
+            <span className="truncate text-[17px] font-bold text-ink">{player.name}</span>
+            {guest && <TeamTag team={player.team!} />}
+            {low && <span className="rounded-md bg-accent/10 px-1.5 py-px text-[10px] font-extrabold text-accent-text">MÁLO MINUT</span>}
+          </span>
+          <span className="flex items-center gap-2">
+            <span className="block h-1 flex-1 overflow-hidden rounded-full bg-ink/10">
+              <span className={`block h-full rounded-full ${low ? 'bg-accent' : 'bg-btn'}`} style={{ width: `${pct}%` }} />
+            </span>
+            <span className={`tabular text-[12px] font-bold ${low ? 'text-accent-text' : 'text-muted'}`}>{Math.floor(seconds / 60)}′</span>
+          </span>
         </span>
-        <span className="flex gap-1">
-          {player.team && player.team !== ACTIVE_TEAM && <TeamChip team={player.team} />}
-          {player.roles.length ? player.roles.map((r) => <RoleChip key={r} role={r} />) : <NoRoleChip />}
-        </span>
+        <IconChevronRight className="text-chev" />
       </button>
     </li>
   );

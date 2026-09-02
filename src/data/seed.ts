@@ -48,7 +48,7 @@ export const SEED_PLAYERS_A: Player[] = A_RAW.map(([name, roles]) => ({
 }));
 
 /** Bump when a seed roster changes so stores without own data pick it up (see store migrate). */
-export const SEED_REVISION = 2;
+export const SEED_REVISION = 3;
 
 export const SEED_PLAYERS_BY_TEAM = { A: SEED_PLAYERS_A, B: SEED_PLAYERS_B };
 /** @deprecated use SEED_PLAYERS_BY_TEAM – kept for tests */
@@ -59,7 +59,7 @@ type SlotSpec = [role: PositionRole, x: number, y: number];
 
 function formation(id: string, name: string, specs: SlotSpec[]): Formation {
   const slots: FormationSlot[] = [
-    { id: `${id}-gk`, role: 'GK', x: 0.5, y: 0.12 },
+    { id: `${id}-gk`, role: 'GK', x: 0.5, y: 0.14 },
     ...specs.map(([role, x, y], i) => ({ id: `${id}-${i + 1}`, role, x, y })),
   ];
   if (slots.length !== 8) throw new Error(`Formation ${name} must have 8 slots`);

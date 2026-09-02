@@ -3,18 +3,18 @@ import { ROLE_SHORT, type FormationSlot, type Player } from '../types';
 import { toPitch } from '../lib/pitchGeometry';
 
 const ROLE_FILL: Record<FormationSlot['role'], string> = {
-  GK: 'var(--color-role-gk)',
-  DEF: 'var(--color-role-def)',
-  MID_C: 'var(--color-role-midc)',
-  MID_W: 'var(--color-role-midw)',
-  FWD: 'var(--color-role-fwd)',
+  GK: 'var(--role-gk)',
+  DEF: 'var(--role-def)',
+  MID_C: 'var(--role-midc)',
+  MID_W: 'var(--role-midw)',
+  FWD: 'var(--role-fwd)',
 };
 
 export type SlotVisual = 'normal' | 'selected' | 'target' | 'dim' | 'missing';
 
 /**
- * One slot on the pitch. Circle r=7.5 in a 100-wide viewBox → ~56 px on a
- * 375 px phone, plus the label pill: comfortably above the 48 px minimum.
+ * One slot on the pitch (design: r=8 role-coloured disc with the role code,
+ * name pill below, optional minutes; gold ring + gold pill when selected).
  */
 export function SlotMarker({
   slot,
@@ -29,51 +29,48 @@ export function SlotMarker({
   slot: FormationSlot;
   player: Player | null;
   visual: SlotVisual;
-  extraLabel?: string; // e.g. minutes in Live
+  extraLabel?: string;
   onTap?: () => void;
   nodeRef?: Ref<SVGGElement>;
   listeners?: Record<string, unknown>;
   style?: CSSProperties;
 }) {
   const { cx, cy } = toPitch(slot.x, slot.y);
-  const r = 7.5;
+  const r = 8;
   const name = player?.name ?? '';
-  const pillW = Math.max(16, name.length * 3.1 + 6);
-  const ringColor =
-    visual === 'selected'
-      ? 'var(--color-accent)'
-      : visual === 'target'
-        ? '#ffffff'
-        : visual === 'missing'
-          ? 'var(--color-accent)'
-          : 'rgba(255,255,255,0.85)';
-  const ringWidth = visual === 'selected' || visual === 'target' ? 2 : 1;
-  const opacity = visual === 'dim' ? 0.45 : 1;
+  const nameW = name.length * 2.7 + 5;
+  const extraW = extraLabel ? extraLabel.length * 2.3 + 3 : 0;
+  const pillW = Math.max(18, nameW + extraW);
+  const selected = visual === 'selected';
+  const stroke = selected ? 'var(--gold)' : visual === 'missing' ? 'var(--gold)' : '#ffffff';
+  const strokeW = selected ? 1.8 : 1.2;
+  const pillFill = selected ? 'var(--gold)' : 'var(--pitch-label-bg)';
+  const pillFg = selected ? '#141728' : 'var(--pitch-label-fg)';
+  const pillMuted = selected ? '#8a6510' : 'var(--pitch-label-muted)';
 
   return (
     <g
       ref={nodeRef}
       {...listeners}
-      style={{ cursor: 'pointer', opacity, ...style }}
+      style={{ cursor: 'pointer', opacity: visual === 'dim' ? 0.45 : 1, ...style }}
       onClick={onTap}
       role="button"
       aria-label={player ? `${player.name}, ${ROLE_SHORT[slot.role]}` : `Prázdný slot ${ROLE_SHORT[slot.role]}`}
     >
-      {/* invisible hit area so taps between circle and pill also count */}
-      <rect x={cx - 12} y={cy - 10} width="24" height="24" fill="transparent" />
-      {visual === 'target' && <circle cx={cx} cy={cy} r={r + 3} fill="#ffffff" opacity="0.35" />}
+      <rect x={cx - 13} y={cy - 11} width="26" height="26" fill="transparent" />
+      {(selected || visual === 'target') && <circle cx={cx} cy={cy} r={r + 3.5} fill={selected ? 'var(--gold)' : '#ffffff'} opacity={selected ? 0.3 : 0.35} />}
       {player ? (
         <>
-          <circle cx={cx} cy={cy} r={r} fill={ROLE_FILL[slot.role]} stroke={ringColor} strokeWidth={ringWidth} />
-          <text x={cx} y={cy + 1.6} textAnchor="middle" fontSize="4.6" fontWeight="700" fill="#fff">
+          <circle cx={cx} cy={cy} r={r} fill={ROLE_FILL[slot.role]} stroke={stroke} strokeWidth={strokeW} />
+          <text x={cx} y={cy + 1.8} textAnchor="middle" fontSize="5" fontWeight="800" fill="#fff">
             {ROLE_SHORT[slot.role]}
           </text>
-          <rect x={cx - pillW / 2} y={cy + r + 1} width={pillW} height="7" rx="3.5" fill="#fff" stroke={visual === 'selected' ? 'var(--color-accent)' : 'none'} strokeWidth="0.8" />
-          <text x={cx} y={cy + r + 6} textAnchor="middle" fontSize="4.8" fontWeight="700" fill="var(--color-ink)">
+          <rect x={cx - pillW / 2} y={cy + r + 1.5} width={pillW} height="7.5" rx="3.75" fill={pillFill} opacity={selected ? 1 : 0.95} />
+          <text x={extraLabel ? cx - pillW / 2 + nameW / 2 + 0.5 : cx} y={cy + r + 6.8} textAnchor="middle" fontSize="4.6" fontWeight="700" fill={pillFg}>
             {name}
           </text>
           {extraLabel && (
-            <text x={cx} y={cy + r + 12} textAnchor="middle" fontSize="4" fontWeight="600" fill="#fff">
+            <text x={cx + pillW / 2 - extraW / 2 - 1} y={cy + r + 6.8} textAnchor="middle" fontSize="4.1" fontWeight="800" fill={pillMuted}>
               {extraLabel}
             </text>
           )}
@@ -84,18 +81,21 @@ export function SlotMarker({
             cx={cx}
             cy={cy}
             r={r}
-            fill={visual === 'missing' ? 'rgba(217,72,15,0.35)' : 'rgba(255,255,255,0.12)'}
-            stroke={ringColor}
-            strokeWidth={ringWidth}
-            strokeDasharray={visual === 'missing' ? undefined : '2 1.5'}
+            fill={visual === 'missing' ? 'rgba(242,184,38,0.18)' : 'rgba(255,255,255,0.1)'}
+            stroke={visual === 'missing' ? 'var(--gold)' : 'rgba(255,255,255,0.85)'}
+            strokeWidth={visual === 'missing' ? 1.6 : 1.1}
+            strokeDasharray="2.5 2"
           />
-          <text x={cx} y={cy + 1.7} textAnchor="middle" fontSize="5" fontWeight="700" fill="#fff">
+          <text x={cx} y={cy + 1.8} textAnchor="middle" fontSize="5" fontWeight="800" fill="#fff">
             {ROLE_SHORT[slot.role]}
           </text>
           {visual === 'missing' && (
-            <text x={cx} y={cy + r + 6} textAnchor="middle" fontSize="4" fontWeight="700" fill="#fff">
-              chybí
-            </text>
+            <>
+              <rect x={cx - 9} y={cy + r + 1.5} width="18" height="7.5" rx="3.75" fill="var(--gold)" />
+              <text x={cx} y={cy + r + 6.8} textAnchor="middle" fontSize="4.4" fontWeight="800" fill="#141728">
+                chybí
+              </text>
+            </>
           )}
         </>
       )}

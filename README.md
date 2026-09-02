@@ -170,6 +170,20 @@ scripts/gen-icons.swift  ikony z loga klubu (scripts/logo-src.png), bílé pozad
 - **Export/import** je per tým: soubor `junior-A-<datum>.json` nese `team`, import do jiného týmu se odmítne s vysvětlením.
 - Hlavičky obrazovek mají zlatý štítek s písmenem aktivního týmu.
 
+### Nové UI (Claude Design, kolo 2)
+
+Implementace návrhu „Junior – nové UI“ (soubor `.dc.html` z Claude Design, přenesený přes prohlížeč). Funkce a tap model zůstaly, mění se řeč:
+
+- **Typografie Archivo** – self-hosted přes `@fontsource/archivo` (500–900, latin + latin-ext kvůli diakritice). Žádný request na Google Fonts; písma jsou v precache SW.
+- **Tokeny** v `index.css` jako CSS proměnné (`--bg`, `--surface`, `--line`, `--text`, `--heading`, `--muted`, `--btn-primary-*`, `--accent*`, `--gold*`, `--pitch*`) mapované do Tailwindu přes `@theme inline`, takže utility jako `bg-surface` nebo `text-heading` mění hodnotu podle `data-theme`. **Tmavý režim**: `settings.theme` = light / dark / system (`hooks/useTheme.ts`), přepínač v Nastavení → Vzhled; hřiště zůstává zelené, v tmavém režimu tmavší (#1c4d31). Primární tlačítka jsou ve světlém režimu navy, v tmavém zlatá.
+- **Vlastní čárové ikony** (`components/icons.tsx`) místo emoji. **Plovoucí navigační pilulka** (`TabBar`) jen na přehledových obrazovkách (Kádr, Zápasy, Sestavy); detail zápasu, editor a Live mají vlastní šipku zpět a využívají celou výšku. Live položka svítí červeně s tečkou, když zápas běží.
+- **Kádr**: hlavička s logem v dlaždici, zlatý štítek TÝM, segmentové řazení „Podle postu / Nejmíň minut“, skupiny s tečkou a počtem, řádky se čtvercovým štítkem postu, pruhem odehraných minut (relativně k maximu v kádru) a štítky „A“ (hostující) / „MÁLO MINUT“ (pod průměrem).
+- **Zápasy**: karty se stavem (červená „HRAJE SE“ s běžícím časem a odpočtem rotace, „PŘIPRAVENO“ se čtyřmi pruhy kroků, „DOHRÁNO“ s ø minut na hráče). **Detail**: číslované sekce v kartách, docházka sbalená na 5 dlaždic + „+N VŠICHNI“ (nepřítomní vždy vidět), náhled sestavy 116 px s upozorněním na chybějící, „Plán rotace“ jako řádek otevírající bottom sheet, lepivé CTA „Přejít na Live“ na scrimu.
+- **Sestavy**: seznam s miniaturou hřiště, karta rozpracované sestavy, akce Náhled / Duplikovat / Smazat (přejmenování v náhledu), zápasové kopie sbalené. **Editor**: lišta formace ▾ · ← název · Uložit, hřiště v kartě s rádiusem 22, výběr hráče jako zlatá pilulka s nápovědou, lavička v jednom řádku (92 × 76).
+- **Live**: navy hero blok (label půle, hodiny 46 px, zlatý progres půle, pauza + Konec půle), červené CTA „Provést rotaci“ s výpisem dvojic a odpočtem/TEĎ, tužka pro úpravu, hřiště dominantní (jmenovka + minuty v pilulce), lavička 90 × 74, dole Vytížení (sheet) a Konec zápasu. Toast se zlatým „Vzít zpět“.
+- **Nastavení**: tým (zlatý segment), Vzhled, výchozí hodnoty jako steppery − / + (nahrazují číselná pole, řeší i bug s mazáním hodnoty), řádek „Záloha a sdílení“ → podobrazovka s exportem/importem a cloudem, Nebezpečná zóna.
+- Ověřeno v iOS simulátoru reálnými tapy: sestavení 8/8, uložení, založení zápasu ze sestavy, plán rotace, Live start, jednotlačítková rotace s undo, tmavý režim.
+
 ## Dodatek k zadání: rotace lavičky (fáze 5 + 6)
 
 Trenér chce točit všechny hráče na lavičce v pevném intervalu (např. 5 min) na jejich postech.

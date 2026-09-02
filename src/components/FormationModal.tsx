@@ -41,11 +41,11 @@ export function FormationModal({
                   onClose();
                 }}
                 className={`tap flex flex-1 items-center justify-between rounded-xl border-2 px-4 text-left text-lg font-bold ${
-                  f.id === currentId ? 'border-primary bg-primary text-white' : 'border-ink/15 bg-white'
+                  f.id === currentId ? 'border-transparent bg-btn text-btn-fg' : 'border-line-2 bg-surface text-ink'
                 }`}
               >
                 <span>{f.name}</span>
-                <span className={`text-sm font-normal ${f.id === currentId ? 'text-white/80' : 'text-ink-muted'}`}>
+                <span className={`text-sm font-normal ${f.id === currentId ? 'opacity-80' : 'text-muted'}`}>
                   {describe(f)}
                 </span>
               </button>
@@ -53,7 +53,7 @@ export function FormationModal({
                 <button
                   type="button"
                   onClick={() => onDelete(f.id)}
-                  className="tap rounded-xl border border-ink/15 bg-white px-3 text-ink-muted"
+                  className="tap rounded-xl border border-line-2 bg-surface px-3 text-muted"
                   aria-label={`Smazat formaci ${f.name}`}
                 >
                   🗑
@@ -88,7 +88,7 @@ export function FormationModal({
               </div>
             </div>
           ))}
-          <p className={`text-center font-semibold ${total === 7 ? 'text-primary' : 'text-accent'}`}>
+          <p className={`text-center font-semibold ${total === 7 ? 'text-heading' : 'text-accent-text'}`}>
             {total} / 7 hráčů v poli {total === 7 ? `· ${defaultCustomName(counts)}` : ''}
           </p>
           <div className="flex gap-2">

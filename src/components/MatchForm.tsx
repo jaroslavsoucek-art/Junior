@@ -1,62 +1,49 @@
 import { useState } from 'react';
 import { Btn, Modal } from './Modal';
-import { NumInput } from './NumInput';
+import { Stepper } from './Stepper';
 import type { MatchInput } from '../store';
 import { todayISO } from '../lib/match';
 
-export function MatchForm({
-  initial,
-  title,
-  onSave,
-  onClose,
-}: {
-  initial: MatchInput;
-  title: string;
-  onSave: (input: MatchInput) => void;
-  onClose: () => void;
-}) {
+export function MatchForm({ initial, title, onSave, onClose }: { initial: MatchInput; title: string; onSave: (input: MatchInput) => void; onClose: () => void }) {
   const [v, setV] = useState<MatchInput>(initial);
   const valid = v.opponent.trim().length > 0 && v.date.length > 0;
+  const field = 'tap w-full rounded-[14px] border border-line-2 bg-surface px-4 text-[16px] font-semibold text-ink';
 
   return (
     <Modal title={title} onClose={onClose}>
       <form
-        className="flex flex-col gap-3"
+        className="flex flex-col gap-3.5"
         onSubmit={(e) => {
           e.preventDefault();
           if (valid) onSave({ ...v, opponent: v.opponent.trim() });
         }}
       >
-        <label className="flex flex-col gap-1">
-          <span className="text-sm font-semibold text-ink-muted">Soupeř</span>
-          <input
-            autoFocus={!initial.opponent}
-            value={v.opponent}
-            onChange={(e) => setV({ ...v, opponent: e.target.value })}
-            className="tap rounded-xl border border-ink/20 bg-white px-4 text-lg"
-            enterKeyHint="next"
-          />
+        <label className="flex flex-col gap-1.5">
+          <span className="eyebrow">Soupeř</span>
+          <input autoFocus={!initial.opponent} value={v.opponent} onChange={(e) => setV({ ...v, opponent: e.target.value })} className={field} enterKeyHint="next" placeholder="Slavia B" />
         </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-sm font-semibold text-ink-muted">Datum</span>
-          <input
-            type="date"
-            value={v.date || todayISO()}
-            onChange={(e) => setV({ ...v, date: e.target.value })}
-            className="tap rounded-xl border border-ink/20 bg-white px-4 text-lg"
-          />
+        <label className="flex flex-col gap-1.5">
+          <span className="eyebrow">Datum</span>
+          <input type="date" value={v.date || todayISO()} onChange={(e) => setV({ ...v, date: e.target.value })} className={field} />
         </label>
-        <div className="grid grid-cols-2 gap-3">
-          <NumField label="Délka půle (min)" value={v.halfLengthMin} min={5} max={60} onChange={(n) => setV((x) => ({ ...x, halfLengthMin: n }))} />
-          <NumField label="Počet půlí" value={v.halvesCount} min={1} max={4} onChange={(n) => setV((x) => ({ ...x, halvesCount: n }))} />
-          <NumField label="Rotace každých (min)" value={v.rotationIntervalMin} min={1} max={30} onChange={(n) => setV((x) => ({ ...x, rotationIntervalMin: n }))} />
+        <div className="flex flex-col gap-2.5 rounded-[18px] border border-line bg-surface p-3.5">
+          <Row label="Délka půle">
+            <Stepper label="Délka půle" value={v.halfLengthMin} min={5} max={60} step={5} unit="′" onChange={(n) => setV((x) => ({ ...x, halfLengthMin: n }))} />
+          </Row>
+          <Row label="Počet půlí">
+            <Stepper label="Počet půlí" value={v.halvesCount} min={1} max={4} onChange={(n) => setV((x) => ({ ...x, halvesCount: n }))} />
+          </Row>
+          <Row label="Interval rotace">
+            <Stepper label="Interval rotace" value={v.rotationIntervalMin} min={1} max={30} unit="′" onChange={(n) => setV((x) => ({ ...x, rotationIntervalMin: n }))} />
+          </Row>
           <button
             type="button"
             onClick={() => setV({ ...v, rotateGoalkeeper: !v.rotateGoalkeeper })}
             aria-pressed={v.rotateGoalkeeper}
-            className={`tap mt-5 rounded-xl border-2 px-3 text-left font-semibold ${v.rotateGoalkeeper ? 'border-primary bg-primary text-white' : 'border-ink/20 bg-white'}`}
+            className={`tap mt-1 flex min-h-12 items-center justify-between rounded-[14px] px-3.5 text-left text-[14px] font-bold ${v.rotateGoalkeeper ? 'bg-btn text-btn-fg' : 'bg-surface-2 text-ink'}`}
           >
-            {v.rotateGoalkeeper ? 'Točit i brankáře' : 'Brankář se netočí'}
+            <span>{v.rotateGoalkeeper ? 'Točit i brankáře' : 'Brankář se netočí'}</span>
+            <span className={`text-[11px] font-extrabold tracking-[0.06em] ${v.rotateGoalkeeper ? 'opacity-80' : 'text-muted'}`}>TAP = PŘEPNOUT</span>
           </button>
         </div>
         <div className="mt-1 flex gap-2">
@@ -72,11 +59,11 @@ export function MatchForm({
   );
 }
 
-function NumField({ label, value, min, max, onChange }: { label: string; value: number; min: number; max: number; onChange: (n: number) => void }) {
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="flex flex-col gap-1">
-      <span className="text-sm font-semibold text-ink-muted">{label}</span>
-      <NumInput value={value} min={min} max={max} onChange={onChange} className="px-4" ariaLabel={label} />
-    </label>
+    <div className="flex min-h-12 items-center justify-between gap-3">
+      <span className="text-[15px] font-semibold text-ink">{label}</span>
+      {children}
+    </div>
   );
 }

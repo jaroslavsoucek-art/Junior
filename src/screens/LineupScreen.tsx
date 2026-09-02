@@ -21,6 +21,7 @@ import { NamePrompt } from '../components/NamePrompt';
 import { MatchForm } from '../components/MatchForm';
 import { todayISO } from '../lib/match';
 import { Btn } from '../components/Modal';
+import { IconArrowRight, IconBack, IconChevronDown } from '../components/icons';
 import { orderBench, roleFit } from '../lib/lineup';
 import { formatMinutes, seasonSeconds } from '../lib/season';
 import type { FormationSlot, Player } from '../types';
@@ -139,29 +140,25 @@ function LineupEditor() {
       : playerById.get(draft.assignments[dragging.slice(5)] ?? '')
     : undefined;
 
-  const hint =
+  const selLabel =
     sel?.kind === 'bench'
-      ? `${selPlayer?.name}: tapni na slot`
+      ? { pill: `${selPlayer?.name} vybrán`, text: 'tapni slot, kam ho posadit' }
       : sel?.kind === 'slot'
         ? draft.assignments[sel.slotId]
-          ? 'Tapni na jiného hráče (prohodit), prázdný slot (přesun) nebo lavičku'
-          : 'Tapni na hráče na lavičce'
-        : match
-          ? `Sestava pro zápas · k dispozici ${match.availablePlayerIds.length} · šipkou zpět se uloží`
-          : 'Tapni na hráče, pak na slot';
+          ? { pill: `${playerById.get(draft.assignments[sel.slotId]!)?.name ?? ''} vybrán`, text: 'tapni hráče (prohodit), slot (přesun) nebo ↓' }
+          : { pill: 'Prázdný slot', text: 'tapni hráče na lavičce' }
+        : null;
+  const benchLabel = match ? `Lavička · k dispozici ${match.availablePlayerIds.length}` : `Lavička ${bench.length}`;
+  const canPrepareMatch = !match && draft.lineupId && !isDirty && filled === 8;
 
   return (
     <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={onDragCancel}>
       <div className="flex h-full flex-col">
         {/* toolbar */}
-        <div className="flex items-center gap-2 px-3 pt-2">
-          <button
-            type="button"
-            onClick={() => setModal('formation')}
-            className="tap rounded-xl border-2 border-ink/15 bg-white px-3 text-lg font-bold"
-            aria-label="Změnit formaci"
-          >
-            {formation.name}
+        <div className="flex items-center gap-2 px-4 pb-3 pt-[18px]">
+          <button type="button" onClick={() => setModal('formation')} className="tap flex min-h-[46px] items-center gap-2 rounded-[14px] border border-line-2 bg-surface px-3.5" aria-label="Změnit formaci">
+            <span className="text-[15px] font-extrabold tracking-[0.02em] text-heading">{formation.name}</span>
+            <IconChevronDown className="text-faint" size={14} />
           </button>
           {match ? (
             <button
@@ -170,102 +167,107 @@ function LineupEditor() {
                 if (isDirty) act.saveDraft();
                 act.leaveMatchEditing();
               }}
-              className="tap flex min-w-0 flex-1 items-center justify-between rounded-xl border-2 border-accent bg-accent/10 px-3 text-left"
+              className="tap flex min-h-[46px] min-w-0 flex-1 items-center justify-between gap-2 rounded-[14px] border border-accent-line bg-accent-soft px-3 text-left"
               aria-label="Zpět k zápasu"
             >
-              <span className="truncate font-semibold">← vs {match.opponent}</span>
-              <span className="ml-2 shrink-0 text-sm text-ink-muted">
-                {filled}/8 {isDirty && '•'}
+              <span className="flex min-w-0 items-center gap-2">
+                <IconBack size={16} className="shrink-0 text-accent-text" />
+                <span className="truncate text-[14px] font-bold text-accent-text">vs {match.opponent}</span>
+              </span>
+              <span className="tabular flex shrink-0 items-center gap-1.5 text-[12px] font-extrabold text-accent-text">
+                {filled}/8 {isDirty && <span className="size-1.5 rounded-full bg-gold" />}
               </span>
             </button>
           ) : (
-            <button
-              type="button"
-              onClick={() => act.setLineupView('list')}
-              className="tap flex min-w-0 flex-1 items-center justify-between rounded-xl border-2 border-ink/15 bg-white px-3 text-left"
-              aria-label="Zpět na seznam sestav"
-            >
-              <span className="truncate font-semibold">← {draft.name || 'Neuložená sestava'}</span>
-              <span className="ml-2 shrink-0 text-sm text-ink-muted">
-                {filled}/8 {isDirty && '•'}
+            <button type="button" onClick={() => act.setLineupView('list')} className="tap flex min-h-[46px] min-w-0 flex-1 items-center justify-between gap-2 rounded-[14px] border border-line-2 bg-surface px-3 text-left" aria-label="Zpět na seznam sestav">
+              <span className="flex min-w-0 items-center gap-2">
+                <IconBack size={16} className="shrink-0 text-heading" />
+                <span className="truncate text-[14px] font-bold text-ink">{draft.name || 'Neuložená sestava'}</span>
+              </span>
+              <span className="tabular flex shrink-0 items-center gap-1.5 text-[12px] font-extrabold text-heading">
+                {filled}/8 {isDirty && <span className="size-1.5 rounded-full bg-gold" />}
               </span>
             </button>
           )}
-          <Btn
-            kind="primary"
-            className="px-3"
-            onClick={() => (draft.lineupId ? act.saveDraft() : setModal('saveAs'))}
-            disabled={filled === 0 || (!!draft.lineupId && !isDirty)}
-          >
+          <Btn kind="primary" className="min-h-[46px] rounded-[14px] px-4 py-0" onClick={() => (draft.lineupId ? act.saveDraft() : setModal('saveAs'))} disabled={filled === 0 || (!!draft.lineupId && !isDirty)}>
             Uložit
           </Btn>
         </div>
 
-        {/* pitch */}
-        <div className="min-h-0 flex-[65] px-3 pt-2">
-          <Pitch>
-            {formation.slots.map((slot) => {
-              const pid = draft.assignments[slot.id] ?? null;
-              const found = pid ? (playerById.get(pid) ?? null) : null;
-              const player = found && (!match || match.availablePlayerIds.includes(found.id)) && found.active ? found : null;
-              return (
-                <DraggableSlot
-                  key={slot.id}
-                  slot={slot}
-                  player={player}
-                  visual={slotVisual(slot, player)}
-                  onTap={() => tapSlot(slot.id)}
-                />
-              );
-            })}
-          </Pitch>
-        </div>
-
-        {/* next step: a saved template can go straight into a new match */}
-        {!match && draft.lineupId && !isDirty && filled === 8 && (
-          <div className="px-3 pt-2">
-            <Btn kind="primary" className="w-full py-2" onClick={() => setModal('newMatch')}>
-              Připravit zápas s touto sestavou →
+        {canPrepareMatch && (
+          <div className="px-4 pb-3">
+            <Btn kind="soft" className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[14px] py-0" onClick={() => setModal('newMatch')}>
+              Připravit zápas s touto sestavou <IconArrowRight size={16} />
             </Btn>
           </div>
         )}
 
+        {/* pitch */}
+        <div className="min-h-0 flex-1 px-4">
+          <div className="no-touch-fx h-full overflow-hidden rounded-[22px] bg-pitch shadow-card">
+            <Pitch>
+              {formation.slots.map((slot) => {
+                const pid = draft.assignments[slot.id] ?? null;
+                const found = pid ? (playerById.get(pid) ?? null) : null;
+                const player = found && (!match || match.availablePlayerIds.includes(found.id)) && found.active ? found : null;
+                return <DraggableSlot key={slot.id} slot={slot} player={player} visual={slotVisual(slot, player)} onTap={() => tapSlot(slot.id)} />;
+              })}
+            </Pitch>
+          </div>
+        </div>
+
         {/* bench */}
-        <BenchArea hint={hint}>
-          {sel?.kind === 'slot' && draft.assignments[sel.slotId] && (
-            <button
-              type="button"
-              onClick={() => {
-                act.clearSlot(sel.slotId);
-                setSel(null);
-              }}
-              className="tap flex h-[72px] w-[88px] shrink-0 flex-col items-center justify-center rounded-xl border-2 border-dashed border-accent bg-accent/10 px-1 text-sm font-bold text-accent"
-            >
-              ↓ na lavičku
-            </button>
-          )}
-          {bench.map((p) => (
-            <DraggableTile key={p.id} player={p} sub={formatMinutes(season[p.id])} visual={tileVisual(p)} onTap={() => tapBench(p.id)} />
-          ))}
-          {bench.length === 0 && <p className="row-span-2 self-center px-2 text-ink-muted">Všichni dostupní hráči jsou na hřišti.</p>}
-          {filled > 0 && (
-            <button
-              type="button"
-              onClick={() => {
-                act.clearDraft();
-                setSel(null);
-              }}
-              className="tap flex h-[72px] w-[88px] shrink-0 items-center justify-center rounded-xl border-2 border-dashed border-ink/20 px-1 text-sm font-semibold text-ink-muted"
-            >
-              Vyčistit
-            </button>
-          )}
+        <BenchArea>
+          <div className="mb-2.5 flex min-h-7 items-center gap-2">
+            {selLabel ? (
+              <>
+                <span className="flex items-center gap-1.5 rounded-full bg-gold-soft px-2.5 py-[5px]">
+                  <span className="size-[7px] rounded-full bg-gold" />
+                  <span className="text-[12px] font-extrabold text-gold-text">{selLabel.pill}</span>
+                </span>
+                <span className="truncate text-[12px] font-semibold text-muted">{selLabel.text}</span>
+              </>
+            ) : (
+              <>
+                <span className="eyebrow">{benchLabel}</span>
+                <span className="ml-auto text-[11px] font-semibold text-faint">tap hráč → tap slot</span>
+              </>
+            )}
+          </div>
+          <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1" style={{ touchAction: 'pan-x' }}>
+            {sel?.kind === 'slot' && draft.assignments[sel.slotId] && (
+              <button
+                type="button"
+                onClick={() => {
+                  act.clearSlot(sel.slotId);
+                  setSel(null);
+                }}
+                className="tap flex min-h-[76px] w-[92px] shrink-0 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-accent-line bg-accent-soft px-1 text-[13px] font-extrabold text-accent-text"
+              >
+                ↓ na lavičku
+              </button>
+            )}
+            {bench.map((p) => (
+              <DraggableTile key={p.id} player={p} sub={formatMinutes(season[p.id])} visual={tileVisual(p)} onTap={() => tapBench(p.id)} />
+            ))}
+            {bench.length === 0 && <p className="self-center px-2 text-[13px] text-muted">Všichni dostupní hráči jsou na hřišti.</p>}
+            {filled > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  act.clearDraft();
+                  setSel(null);
+                }}
+                className="tap flex min-h-[76px] w-[92px] shrink-0 items-center justify-center rounded-2xl border border-dashed border-line-2 px-1 text-[13px] font-bold text-muted"
+              >
+                Vyčistit
+              </button>
+            )}
+          </div>
         </BenchArea>
       </div>
 
-      <DragOverlay dropAnimation={null}>
-        {dragPlayer && <BenchTile player={dragPlayer} visual="selected" />}
-      </DragOverlay>
+      <DragOverlay dropAnimation={null}>{dragPlayer && <BenchTile player={dragPlayer} visual="selected" />}</DragOverlay>
 
       {modal === 'formation' && (
         <FormationModal
@@ -351,15 +353,11 @@ function DraggableTile({ player, sub, visual, onTap }: { player: Player; sub: st
   );
 }
 
-function BenchArea({ hint, children }: { hint: string; children: React.ReactNode }) {
+function BenchArea({ children }: { children: React.ReactNode }) {
   const { setNodeRef, isOver } = useDroppable({ id: 'bench' });
   return (
-    <div ref={setNodeRef} className={`no-touch-fx flex flex-[35] flex-col border-t-2 ${isOver ? 'border-accent bg-accent/5' : 'border-ink/10'}`}>
-      <p className="px-3 pt-2 text-sm font-semibold text-ink-muted">{hint}</p>
-      {/* two rows, scrolling horizontally: 8 tiles visible at once on a 375 px phone */}
-      <div className="grid flex-1 grid-flow-col grid-rows-2 content-start gap-2 overflow-x-auto px-3 py-2" style={{ touchAction: 'pan-x' }}>
-        {children}
-      </div>
+    <div ref={setNodeRef} className={`no-touch-fx px-4 pb-[18px] pt-3 ${isOver ? 'bg-accent-soft' : ''}`}>
+      {children}
     </div>
   );
 }

@@ -1,29 +1,106 @@
 import { useRef, useState } from 'react';
 import { ACTIVE_TEAM, pickData, useStore, type AppData } from '../store';
-import { switchTeamAndReload, TEAMS } from '../lib/team';
-import { Btn, Confirm, Modal } from '../components/Modal';
-import { buildExport, exportFileName, parseImport, previewImport, type ImportPreview } from '../lib/exportImport';
+import { Btn, Card, Confirm, Modal } from '../components/Modal';
+import { DetailHeader } from '../components/ScreenHeader';
+import { Segmented } from '../components/Segmented';
+import { Stepper } from '../components/Stepper';
 import { CloudSync } from '../components/CloudSync';
-import { NumInput } from '../components/NumInput';
+import { IconChevronRight, IconCloud } from '../components/icons';
+import { buildExport, exportFileName, parseImport, previewImport, type ImportPreview } from '../lib/exportImport';
+import { switchTeamAndReload, TEAMS } from '../lib/team';
+import type { ThemePref } from '../hooks/useTheme';
 
 export function SettingsScreen({ onBack }: { onBack: () => void }) {
   const settings = useStore((s) => s.settings);
   const updateSettings = useStore((s) => s.updateSettings);
-  const replaceAll = useStore((s) => s.replaceAll);
   const resetToSeed = useStore((s) => s.resetToSeed);
+  const [confirmWipe, setConfirmWipe] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [dataOpen, setDataOpen] = useState(false);
 
+  if (dataOpen) return <DataScreen onBack={() => setDataOpen(false)} notice={notice} setNotice={setNotice} />;
+
+  return (
+    <div className="px-[18px] pb-[100px] pt-5">
+      <DetailHeader title="Nastavení" onBack={onBack} />
+
+      <Card className="mb-3.5">
+        <h2 className="eyebrow mb-1">Aktivní tým</h2>
+        <p className="mb-3 text-[13px] font-medium text-muted">Každý tým má vlastní kádr, sestavy i minuty. Přepnutí appku znovu načte.</p>
+        <Segmented gold size="lg" value={ACTIVE_TEAM} options={TEAMS.map((t) => ({ value: t, label: `Tým ${t}` }))} onChange={(t) => t !== ACTIVE_TEAM && switchTeamAndReload(t)} />
+      </Card>
+
+      <Card className="mb-3.5">
+        <h2 className="eyebrow mb-3">Vzhled</h2>
+        <Segmented<ThemePref> size="lg" value={settings.theme ?? 'light'} options={[{ value: 'light', label: 'Světlý' }, { value: 'dark', label: 'Tmavý' }, { value: 'system', label: 'Systém' }]} onChange={(theme) => updateSettings({ theme })} />
+        <p className="mt-2.5 text-[12px] font-medium text-faint">Na slunci zůstává světlý režim čitelnější, tmavý je pro halu a večerní zápasy.</p>
+      </Card>
+
+      <Card className="mb-3.5">
+        <h2 className="eyebrow mb-3">Výchozí pro nový zápas</h2>
+        <div className="flex flex-col gap-2.5">
+          <Row label="Délka půle">
+            <Stepper label="Délka půle" value={settings.defaultHalfLengthMin} min={5} max={60} step={5} unit="′" onChange={(n) => updateSettings({ defaultHalfLengthMin: n })} />
+          </Row>
+          <Row label="Počet půlí">
+            <Stepper label="Počet půlí" value={settings.defaultHalvesCount} min={1} max={4} onChange={(n) => updateSettings({ defaultHalvesCount: n })} />
+          </Row>
+          <Row label="Interval rotace">
+            <Stepper label="Interval rotace" value={settings.defaultRotationIntervalMin} min={1} max={30} unit="′" onChange={(n) => updateSettings({ defaultRotationIntervalMin: n })} />
+          </Row>
+        </div>
+      </Card>
+
+      <button type="button" onClick={() => setDataOpen(true)} className="tap mb-3.5 flex min-h-[60px] w-full items-center justify-between rounded-[22px] border border-line bg-surface px-4 text-left">
+        <span className="flex items-center gap-3">
+          <span className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-heading">
+            <IconCloud />
+          </span>
+          <span>
+            <span className="block text-[16px] font-bold text-ink">Záloha a sdílení</span>
+            <span className="block text-[12px] font-semibold text-muted">Export/import JSON · cloud mezi telefony{settings.clubCode ? ' · kód nastaven' : ''}</span>
+          </span>
+        </span>
+        <IconChevronRight className="text-chev" />
+      </button>
+
+      <section className="rounded-[22px] border border-accent-line bg-accent-soft p-4">
+        <h2 className="eyebrow mb-2.5 !text-accent-text">Nebezpečná zóna</h2>
+        <Btn kind="accent" className="w-full rounded-[14px]" onClick={() => setConfirmWipe(true)}>
+          Smazat všechna data
+        </Btn>
+      </section>
+
+      {notice && <Toast text={notice} />}
+      {confirmWipe && (
+        <Confirm
+          title="Smazat všechna data?"
+          text={`Smaže hráče, sestavy i všechny zápasy s minutami týmu ${ACTIVE_TEAM}. Vrátí se výchozí kádr. Nejde vzít zpět – nejdřív si udělej export.`}
+          confirmLabel="Smazat vše"
+          danger
+          onCancel={() => setConfirmWipe(false)}
+          onConfirm={() => {
+            resetToSeed();
+            setConfirmWipe(false);
+            flash(setNotice, 'Data smazána, kádr obnoven ze seedu');
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function DataScreen({ onBack, notice, setNotice }: { onBack: () => void; notice: string | null; setNotice: (s: string | null) => void }) {
+  const replaceAll = useStore((s) => s.replaceAll);
   const fileRef = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState<{ data: AppData; preview: ImportPreview; exportedAt: string | null } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [confirmWipe, setConfirmWipe] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
 
   async function doExport() {
     const data = pickData(useStore.getState());
     const json = JSON.stringify(buildExport(data, new Date(), ACTIVE_TEAM), null, 2);
     const name = exportFileName(new Date(), ACTIVE_TEAM);
     const file = new File([json], name, { type: 'application/json' });
-    // iOS standalone PWAs handle <a download> poorly; the share sheet (→ "Save to Files") is reliable.
     if (navigator.canShare?.({ files: [file] })) {
       try {
         await navigator.share({ files: [file], title: name });
@@ -46,127 +123,72 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
     if (!f) return;
     setError(null);
     const parsed = parseImport(await f.text());
-    if (!parsed.ok) {
-      setError(parsed.error);
-      return;
-    }
-    if (parsed.team && parsed.team !== ACTIVE_TEAM) {
-      setError(`Soubor je záloha týmu ${parsed.team}, aktivní je tým ${ACTIVE_TEAM}. Přepni tým a importuj tam.`);
-      return;
-    }
+    if (!parsed.ok) return setError(parsed.error);
+    if (parsed.team && parsed.team !== ACTIVE_TEAM) return setError(`Soubor je záloha týmu ${parsed.team}, aktivní je tým ${ACTIVE_TEAM}. Přepni tým a importuj tam.`);
     setPending({ data: parsed.data, exportedAt: parsed.exportedAt, preview: previewImport(pickData(useStore.getState()), parsed.data) });
     if (fileRef.current) fileRef.current.value = '';
   }
 
-
   return (
-    <div className="px-4 pb-6">
-      <div className="flex items-center gap-2 py-3">
-        <button type="button" onClick={onBack} className="tap rounded-xl px-2 text-xl" aria-label="Zpět na kádr">
-          ←
-        </button>
-        <h1 className="text-2xl font-bold">Nastavení</h1>
-      </div>
+    <div className="px-[18px] pb-[100px] pt-5">
+      <DetailHeader title="Záloha a sdílení" subtitle={`tým ${ACTIVE_TEAM}`} onBack={onBack} />
 
-      <Section title="Tým">
-        <p className="text-sm text-ink-muted">Každý tým má vlastní kádr, sestavy, zápasy i minuty. Přepnutí appku znovu načte.</p>
-        <div className="flex gap-2 no-touch-fx">
-          {TEAMS.map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => t !== ACTIVE_TEAM && switchTeamAndReload(t)}
-              aria-pressed={t === ACTIVE_TEAM}
-              className={`tap flex-1 rounded-xl border-2 text-lg font-bold ${t === ACTIVE_TEAM ? 'border-primary bg-primary text-white' : 'border-ink/20 bg-white'}`}
-            >
-              Tým {t}
-            </button>
-          ))}
-        </div>
-      </Section>
-
-      <Section title="Výchozí hodnoty pro nový zápas">
-        <NumberField label="Délka půle (min)" value={settings.defaultHalfLengthMin} min={5} max={60} onChange={(n) => updateSettings({ defaultHalfLengthMin: n })} />
-        <NumberField label="Počet půlí" value={settings.defaultHalvesCount} min={1} max={4} onChange={(n) => updateSettings({ defaultHalvesCount: n })} />
-        <NumberField label="Interval rotace (min)" value={settings.defaultRotationIntervalMin} min={1} max={30} onChange={(n) => updateSettings({ defaultRotationIntervalMin: n })} />
-      </Section>
-
-      <Section title="Sdílení mezi telefony (cloud)">
+      <Card className="mb-3.5 flex flex-col gap-3">
+        <h2 className="eyebrow">Sdílení mezi telefony (cloud)</h2>
         <CloudSync onNotice={(m) => flash(setNotice, m)} />
-      </Section>
+      </Card>
 
-      <Section title="Záloha dat">
-        <p className="text-sm text-ink-muted">
-          Vše je jen v tomto telefonu. Export vytvoří soubor <code>junior-{ACTIVE_TEAM}-&lt;datum&gt;.json</code> s kádrem, sestavami, zápasy i formacemi týmu {ACTIVE_TEAM}.
+      <Card className="mb-3.5 flex flex-col gap-3">
+        <h2 className="eyebrow">Záloha souborem</h2>
+        <p className="text-[13px] text-muted">
+          Export vytvoří soubor <code className="text-[12px]">junior-{ACTIVE_TEAM}-&lt;datum&gt;.json</code> s kádrem, sestavami, zápasy i formacemi.
         </p>
         <Btn onClick={doExport} kind="primary">
           Exportovat JSON
         </Btn>
         <Btn onClick={() => fileRef.current?.click()}>Importovat JSON…</Btn>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="application/json,.json"
-          className="hidden"
-          onChange={(e) => onFile(e.target.files?.[0])}
-        />
-        {error && <p className="rounded-lg bg-accent/10 px-3 py-2 font-semibold text-accent">{error}</p>}
-      </Section>
+        <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={(e) => onFile(e.target.files?.[0])} />
+        {error && <p className="rounded-xl bg-accent-soft px-3 py-2 text-[13px] font-bold text-accent-text">{error}</p>}
+      </Card>
 
-      <Section title="Nebezpečná zóna">
-        <Btn onClick={() => setConfirmWipe(true)} kind="danger">
-          Smazat všechna data
-        </Btn>
-      </Section>
-
-      {notice && (
-        <div className="fixed inset-x-4 bottom-24 z-40 rounded-xl bg-ink px-4 py-3 text-center font-semibold text-white">
-          {notice}
-        </div>
-      )}
-
+      {notice && <Toast text={notice} />}
       {pending && (
-        <Modal title="Import přepíše všechna data" onClose={() => setPending(null)}>
-          {pending.exportedAt && (
-            <p className="mb-2 text-sm text-ink-muted">Soubor exportován {new Date(pending.exportedAt).toLocaleString('cs-CZ')}</p>
-          )}
-          <table className="mb-3 w-full text-base">
+        <Modal title="Import přepíše všechna data" subtitle={pending.exportedAt ? `Soubor exportován ${new Date(pending.exportedAt).toLocaleString('cs-CZ')}` : undefined} onClose={() => setPending(null)}>
+          <table className="mb-3 w-full text-[15px]">
             <thead>
-              <tr className="text-left text-sm text-ink-muted">
-                <th className="py-1"></th>
+              <tr className="text-left text-[12px] text-muted">
+                <th className="py-1" />
                 <th className="py-1 text-right">Teď</th>
                 <th className="py-1 text-right">Po importu</th>
               </tr>
             </thead>
             <tbody>
               {pending.preview.counts.map((c) => (
-                <tr key={c.label} className="border-t border-ink/10">
-                  <td className="py-2">{c.label}</td>
-                  <td className="py-2 text-right tabular-nums">{c.current}</td>
-                  <td className={`py-2 text-right font-semibold tabular-nums ${c.current !== c.incoming ? 'text-accent' : ''}`}>
-                    {c.incoming}
-                  </td>
+                <tr key={c.label} className="border-t border-line">
+                  <td className="py-2 text-ink">{c.label}</td>
+                  <td className="tabular py-2 text-right text-ink">{c.current}</td>
+                  <td className={`tabular py-2 text-right font-bold ${c.current !== c.incoming ? 'text-accent-text' : 'text-ink'}`}>{c.incoming}</td>
                 </tr>
               ))}
             </tbody>
           </table>
           {pending.preview.addedPlayers.length > 0 && (
-            <p className="text-sm">
+            <p className="text-[13px] text-ink">
               <b>Přibudou:</b> {pending.preview.addedPlayers.join(', ')}
             </p>
           )}
           {pending.preview.removedPlayers.length > 0 && (
-            <p className="text-sm text-accent">
+            <p className="text-[13px] text-accent-text">
               <b>Zmizí:</b> {pending.preview.removedPlayers.join(', ')}
             </p>
           )}
-          <p className="my-3 text-sm text-ink-muted">Nejde o sloučení. Aktuální data budou nahrazena obsahem souboru.</p>
+          <p className="my-3 text-[13px] text-muted">Nejde o sloučení. Aktuální data budou nahrazena obsahem souboru.</p>
           <div className="flex gap-2">
             <Btn onClick={() => setPending(null)} className="flex-1">
               Zrušit
             </Btn>
             <Btn
-              kind="danger"
+              kind="accent"
               className="flex-1"
               onClick={() => {
                 replaceAll(pending.data);
@@ -179,21 +201,6 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
           </div>
         </Modal>
       )}
-
-      {confirmWipe && (
-        <Confirm
-          title="Smazat všechna data?"
-          text={`Smaže hráče, sestavy i všechny zápasy s minutami týmu ${ACTIVE_TEAM}. Vrátí se výchozí kádr. Nejde vzít zpět – nejdřív si udělej export.`}
-          confirmLabel="Smazat vše"
-          danger
-          onCancel={() => setConfirmWipe(false)}
-          onConfirm={() => {
-            resetToSeed();
-            setConfirmWipe(false);
-            flash(setNotice, 'Data smazána, kádr obnoven ze seedu');
-          }}
-        />
-      )}
     </div>
   );
 }
@@ -203,20 +210,15 @@ function flash(set: (s: string | null) => void, msg: string) {
   setTimeout(() => set(null), 2500);
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="mb-6 flex flex-col gap-3 rounded-2xl border border-ink/10 bg-white p-4">
-      <h2 className="text-lg font-bold">{title}</h2>
-      {children}
-    </section>
-  );
+function Toast({ text }: { text: string }) {
+  return <div className="fixed inset-x-4 bottom-[92px] z-40 rounded-[18px] bg-[#141728] px-4 py-3 text-center text-[14px] font-bold text-white shadow-float">{text}</div>;
 }
 
-function NumberField({ label, value, min, max, onChange }: { label: string; value: number; min: number; max: number; onChange: (n: number) => void }) {
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="flex items-center justify-between gap-3">
-      <span className="font-semibold">{label}</span>
-      <NumInput value={value} min={min} max={max} onChange={onChange} className="w-24 bg-paper text-right" ariaLabel={label} />
+    <label className="flex min-h-12 items-center justify-between gap-3">
+      <span className="text-[15px] font-semibold text-ink">{label}</span>
+      {children}
     </label>
   );
 }

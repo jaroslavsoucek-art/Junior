@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
 import { useStore } from '../store';
 import { ScreenHeader } from '../components/ScreenHeader';
-import { Btn, Confirm } from '../components/Modal';
+import { Btn, Confirm, Modal } from '../components/Modal';
 import { NamePrompt } from '../components/NamePrompt';
-import { LineupPreview } from '../components/LineupPreview';
+import { LineupPreview, LineupThumb } from '../components/LineupPreview';
+import { IconArrowRight, IconChevronDown } from '../components/icons';
 import type { Lineup } from '../types';
 
 /** Sestava tab landing: saved templates first, the editor is one tap away. */
@@ -18,6 +19,7 @@ export function LineupsListScreen() {
   const [confirm, setConfirm] = useState<Lineup | null>(null);
   const [renaming, setRenaming] = useState<Lineup | null>(null);
   const [preview, setPreview] = useState<Lineup | null>(null);
+  const [showMatchLineups, setShowMatchLineups] = useState(false);
 
   const templates = useMemo(() => lineups.filter((l) => !l.matchId).sort((a, b) => b.updatedAt - a.updatedAt), [lineups]);
   const matchLineups = useMemo(() => lineups.filter((l) => l.matchId).sort((a, b) => b.updatedAt - a.updatedAt), [lineups]);
@@ -31,48 +33,61 @@ export function LineupsListScreen() {
     const m = matches.find((x) => x.id === l.matchId);
     return m ? `vs ${m.opponent}` : 'smazaný zápas';
   };
+  const dateShort = (t: number) => {
+    const d = new Date(t);
+    return `${d.getDate()}. ${d.getMonth() + 1}.`;
+  };
 
   return (
-    <div className="px-4 pb-4">
-      <ScreenHeader title="Sestavy" subtitle="Uložené šablony · tap = otevřít v editoru" />
-
-      <Btn
-        kind="primary"
-        className="w-full"
-        onClick={() => {
-          act.clearDraft();
-          if (draft.matchId) act.leaveMatchEditing();
-          openEditor();
-        }}
-      >
-        + Nová sestava
-      </Btn>
+    <div className="px-[18px] pb-[100px] pt-5">
+      <ScreenHeader
+        title="Sestavy"
+        subtitle="Šablony · tap otevře editor"
+        showLogo={false}
+        right={
+          <Btn
+            kind="primary"
+            className="min-h-12 px-4"
+            onClick={() => {
+              act.clearDraft();
+              if (draft.matchId) act.leaveMatchEditing();
+              openEditor();
+            }}
+          >
+            + Nová
+          </Btn>
+        }
+      />
 
       {draftUnsaved && (
-        <button type="button" onClick={openEditor} className="tap mt-3 flex w-full items-center justify-between rounded-xl border-2 border-dashed border-accent bg-accent/5 px-4 py-3 text-left">
-          <span className="flex flex-col">
-            <span className="font-bold text-accent">Rozpracovaná, neuložená</span>
-            <span className="text-sm text-ink-muted">{formations.find((f) => f.id === draft.formationId)?.name} · {draftFilled}/8</span>
+        <button type="button" onClick={openEditor} className="tap mb-3.5 flex min-h-[68px] w-full items-center gap-3 rounded-[20px] border border-dashed border-gold/70 bg-gold-soft px-4 py-3 text-left">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gold text-[#141728]">
+            <IconArrowRight />
           </span>
-          <span className="font-semibold text-accent">Pokračovat →</span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-extrabold text-gold-text">Rozpracovaná, neuložená</span>
+            <span className="block text-[12px] font-semibold text-gold-text opacity-80">
+              {formations.find((f) => f.id === draft.formationId)?.name} · {draftFilled}/8 · pokračovat
+            </span>
+          </span>
         </button>
       )}
 
-      {templates.length === 0 && !draftUnsaved && <p className="mt-6 text-center text-ink-muted">Zatím žádná uložená sestava. Začni novou.</p>}
+      {templates.length === 0 && !draftUnsaved && <p className="mt-6 text-center text-muted">Zatím žádná uložená sestava. Začni novou.</p>}
 
-      <ul className="mt-3 flex flex-col gap-2">
+      <ul className="flex flex-col gap-2.5">
         {templates.map((l) => (
           <LineupRow
             key={l.id}
             lineup={l}
-            meta={`${fmt(l)?.name ?? '?'} · ${filled(l)}/8 · ${new Date(l.updatedAt).toLocaleDateString('cs-CZ')}`}
+            thumb={fmt(l) ? <LineupThumb formation={fmt(l)!} assignments={l.assignments} /> : null}
+            meta={`${fmt(l)?.name ?? '?'} · ${filled(l)}/8 · upraveno ${dateShort(l.updatedAt)}`}
             current={l.id === draft.lineupId && !draft.matchId}
             onOpen={() => {
               act.loadLineup(l.id);
               openEditor();
             }}
             onPreview={() => setPreview(l)}
-            onRename={() => setRenaming(l)}
             onDuplicate={() => act.duplicateLineup(l.id)}
             onDelete={() => setConfirm(l)}
           />
@@ -80,39 +95,49 @@ export function LineupsListScreen() {
       </ul>
 
       {matchLineups.length > 0 && (
-        <details className="mt-6">
-          <summary className="tap flex cursor-pointer items-center px-1 font-semibold text-ink-muted">Zápasové sestavy ({matchLineups.length})</summary>
-          <ul className="mt-2 flex flex-col gap-2">
-            {matchLineups.map((l) => (
-              <LineupRow
-                key={l.id}
-                lineup={l}
-                meta={`${matchName(l)} · ${fmt(l)?.name ?? '?'} · ${filled(l)}/8`}
-                current={l.id === draft.lineupId}
-                onOpen={() => l.matchId && act.editMatchLineup(l.matchId)}
-                onPreview={() => setPreview(l)}
-                onRename={() => setRenaming(l)}
-                onDuplicate={() => act.duplicateLineup(l.id)}
-                onDelete={() => setConfirm(l)}
-              />
-            ))}
-          </ul>
-        </details>
+        <div className="mt-3.5">
+          <button type="button" onClick={() => setShowMatchLineups((v) => !v)} className="tap flex min-h-[52px] w-full items-center justify-between rounded-[18px] border border-line bg-surface px-4 text-left" aria-expanded={showMatchLineups}>
+            <span className="text-[14px] font-bold text-ink">Zápasové sestavy</span>
+            <span className="flex items-center gap-2 text-[12px] font-bold text-muted">
+              {matchLineups.length} <IconChevronDown className={`text-chev transition-transform ${showMatchLineups ? 'rotate-180' : ''}`} />
+            </span>
+          </button>
+          {showMatchLineups && (
+            <ul className="mt-2.5 flex flex-col gap-2.5">
+              {matchLineups.map((l) => (
+                <LineupRow
+                  key={l.id}
+                  lineup={l}
+                  thumb={fmt(l) ? <LineupThumb formation={fmt(l)!} assignments={l.assignments} /> : null}
+                  meta={`${matchName(l)} · ${fmt(l)?.name ?? '?'} · ${filled(l)}/8`}
+                  current={l.id === draft.lineupId}
+                  onOpen={() => l.matchId && act.editMatchLineup(l.matchId)}
+                  onPreview={() => setPreview(l)}
+                  onDuplicate={() => act.duplicateLineup(l.id)}
+                  onDelete={() => setConfirm(l)}
+                />
+              ))}
+            </ul>
+          )}
+        </div>
       )}
 
       {preview && fmt(preview) && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end bg-ink/50" role="dialog" aria-modal="true" onClick={() => setPreview(null)}>
-          <div className="safe-bottom rounded-t-2xl bg-paper p-4" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-2 flex items-center justify-between">
-              <h2 className="text-xl font-bold">{preview.name}</h2>
-              <button type="button" onClick={() => setPreview(null)} className="tap rounded-lg px-3 text-ink-muted" aria-label="Zavřít">
-                ✕
-              </button>
-            </div>
-            <LineupPreview formation={fmt(preview)!} assignments={preview.assignments} missingSlotIds={[]} players={players} />
+        <Modal title={preview.name} subtitle={`${fmt(preview)!.name} · ${filled(preview)}/8`} onClose={() => setPreview(null)}>
+          <LineupPreview formation={fmt(preview)!} assignments={preview.assignments} missingSlotIds={[]} players={players} className="mx-auto w-full max-w-[240px]" />
+          <div className="mt-3.5 flex gap-2">
+            <Btn
+              className="flex-1"
+              onClick={() => {
+                setRenaming(preview);
+                setPreview(null);
+              }}
+            >
+              Přejmenovat
+            </Btn>
             <Btn
               kind="primary"
-              className="mt-3 w-full"
+              className="flex-[1.4]"
               onClick={() => {
                 if (preview.matchId) act.editMatchLineup(preview.matchId);
                 else act.loadLineup(preview.id);
@@ -123,7 +148,7 @@ export function LineupsListScreen() {
               Otevřít v editoru
             </Btn>
           </div>
-        </div>
+        </Modal>
       )}
       {confirm && (
         <Confirm
@@ -153,46 +178,28 @@ export function LineupsListScreen() {
   );
 }
 
-function LineupRow({
-  lineup,
-  meta,
-  current,
-  onOpen,
-  onPreview,
-  onRename,
-  onDuplicate,
-  onDelete,
-}: {
-  lineup: Lineup;
-  meta: string;
-  current: boolean;
-  onOpen: () => void;
-  onPreview: () => void;
-  onRename: () => void;
-  onDuplicate: () => void;
-  onDelete: () => void;
-}) {
+function LineupRow({ lineup, thumb, meta, current, onOpen, onPreview, onDuplicate, onDelete }: { lineup: Lineup; thumb: React.ReactNode; meta: string; current: boolean; onOpen: () => void; onPreview: () => void; onDuplicate: () => void; onDelete: () => void }) {
   return (
-    <li className={`rounded-xl border-2 bg-white p-2 ${current ? 'border-primary' : 'border-ink/10'}`}>
-      <div className="flex gap-2">
-        <button type="button" onClick={onOpen} className="tap flex min-w-0 flex-1 flex-col justify-center px-2 text-left">
-          <span className="truncate text-lg font-bold">{lineup.name}</span>
-          <span className="text-sm text-ink-muted">{meta}</span>
+    <li className={`flex items-center gap-3 rounded-[20px] bg-surface px-3.5 py-3 ${current ? 'border-2 border-primary' : 'border border-line'}`}>
+      <button type="button" onClick={onOpen} className="tap h-[66px] w-11 shrink-0 overflow-hidden rounded-[10px]" aria-label={`Otevřít ${lineup.name}`}>
+        {thumb}
+      </button>
+      <div className="min-w-0 flex-1">
+        <button type="button" onClick={onOpen} className="tap block w-full text-left">
+          <p className="truncate text-[17px] font-bold text-ink">{lineup.name}</p>
+          <p className="mt-0.5 text-[12px] font-semibold text-muted">{meta}</p>
         </button>
-        <button type="button" onClick={onPreview} className="tap rounded-lg border border-ink/10 px-3 text-sm font-semibold text-primary" aria-label={`Náhled ${lineup.name}`}>
-          Náhled
-        </button>
-      </div>
-      <div className="mt-1 flex gap-1 no-touch-fx">
-        <Btn kind="ghost" className="flex-1 py-2 text-sm" onClick={onRename}>
-          Přejmenovat
-        </Btn>
-        <Btn kind="ghost" className="flex-1 py-2 text-sm" onClick={onDuplicate}>
-          Duplikovat
-        </Btn>
-        <Btn kind="ghost" className="flex-1 py-2 text-sm text-accent" onClick={onDelete}>
-          Smazat
-        </Btn>
+        <div className="no-touch-fx mt-1 flex gap-1.5">
+          <button type="button" onClick={onPreview} className="tap min-h-10 rounded-xl border border-line-2 bg-surface px-3 text-[12px] font-bold text-ink">
+            Náhled
+          </button>
+          <button type="button" onClick={onDuplicate} className="tap min-h-10 rounded-xl border border-line-2 bg-surface px-3 text-[12px] font-bold text-ink">
+            Duplikovat
+          </button>
+          <button type="button" onClick={onDelete} className="tap min-h-10 rounded-xl border border-accent-line bg-accent-soft px-3 text-[12px] font-bold text-accent-text">
+            Smazat
+          </button>
+        </div>
       </div>
     </li>
   );

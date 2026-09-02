@@ -1,25 +1,134 @@
 @import 'tailwindcss';
+/* Archivo self-hosted (latin + latin-ext) – no runtime request to Google Fonts. */
+@import '@fontsource/archivo/500.css';
+@import '@fontsource/archivo/600.css';
+@import '@fontsource/archivo/700.css';
+@import '@fontsource/archivo/800.css';
+@import '@fontsource/archivo/900.css';
 
-@theme {
-  /* Pitch green: darker and less saturated than "grass green" so it stays readable in sunlight. */
-  --color-pitch: #2f6b45;
-  --color-pitch-dark: #245536;
-  --color-pitch-line: #e8f0e9;
+/* ---- design tokens (light) ------------------------------------------------ */
+:root {
+  --bg: #f7f6f3;
+  --surface: #ffffff;
+  --surface-2: rgba(22, 28, 75, 0.07);
+  --surface-3: #f7f6f3; /* inset fields on a white card */
+  --line: rgba(20, 23, 40, 0.07);
+  --line-2: rgba(20, 23, 40, 0.12);
+  --text: #141728;
+  --heading: #161c4b;
+  --muted: #626677;
+  --faint: #9096ad;
+  --chev: #c4c7d4;
+  --primary: #161c4b;
+  --btn-primary-bg: #161c4b;
+  --btn-primary-fg: #ffffff;
+  --accent: #a4172a;
+  --accent-text: #a4172a;
+  --accent-soft: rgba(164, 23, 42, 0.06);
+  --accent-line: rgba(164, 23, 42, 0.25);
+  --gold: #f2b826;
+  --gold-text: #8a6510;
+  --gold-soft: rgba(242, 184, 38, 0.16);
+  --pitch: #2f6b45;
+  --pitch-dark: #245536;
+  --pitch-line: #e8f0e9;
+  --pitch-label-bg: #ffffff;
+  --pitch-label-fg: #141728;
+  --pitch-label-muted: #626677;
+  --nav-bg: rgba(255, 255, 255, 0.92);
+  --clock-fg: #ffffff;
+  --shadow-card: 0 6px 18px rgba(20, 23, 40, 0.12);
+  --shadow-float: 0 8px 24px rgba(20, 23, 40, 0.12);
+  --role-gk: #b7791f;
+  --role-def: #2b6cb0;
+  --role-midc: #2f855a;
+  --role-midw: #6b46c1;
+  --role-fwd: #c53030;
+  --role-gk-text: #b7791f;
+  --role-def-text: #2b6cb0;
+  --role-midc-text: #2f855a;
+  --role-midw-text: #6b46c1;
+  --role-fwd-text: #c53030;
+  color-scheme: light;
+}
 
-  /* Club colours (SK Junior Praha): navy, red, gold. Light, high-contrast UI. */
-  --color-primary: #161c4b; /* navy – buttons, active tab, headings */
-  --color-accent: #a4172a; /* red – warnings, selection, danger */
-  --color-gold: #f2b826; /* gold – highlights (targets, low-minutes) */
-  --color-paper: #f5f4f0;
-  --color-ink: #141728;
-  --color-ink-muted: #5c6070;
+/* ---- dark ------------------------------------------------------------------ */
+:root[data-theme='dark'] {
+  --bg: #0b0e1c;
+  --surface: #141936;
+  --surface-2: rgba(255, 255, 255, 0.06);
+  --surface-3: rgba(255, 255, 255, 0.05);
+  --line: rgba(255, 255, 255, 0.09);
+  --line-2: rgba(255, 255, 255, 0.12);
+  --text: #f2f3f7;
+  --heading: #f2f3f7;
+  --muted: #9096ad;
+  --faint: #6d7391;
+  --chev: #4c5270;
+  --btn-primary-bg: #f2b826;
+  --btn-primary-fg: #141728;
+  --accent-text: #ff8b9c;
+  --accent-soft: rgba(164, 23, 42, 0.16);
+  --accent-line: rgba(255, 139, 156, 0.35);
+  --gold-text: #f2b826;
+  --gold-soft: rgba(242, 184, 38, 0.18);
+  --pitch: #1c4d31;
+  --pitch-dark: #153a25;
+  --pitch-line: #cfe3d5;
+  --pitch-label-bg: #0b0e1c;
+  --pitch-label-fg: #f2f3f7;
+  --pitch-label-muted: #9096ad;
+  --nav-bg: rgba(20, 25, 54, 0.92);
+  --clock-fg: #f2b826;
+  --shadow-card: 0 6px 18px rgba(0, 0, 0, 0.35);
+  --shadow-float: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --role-gk-text: #e0a53c;
+  --role-def-text: #7fb0e6;
+  --role-midc-text: #79c79b;
+  --role-midw-text: #b39ae8;
+  --role-fwd-text: #f08a8a;
+  color-scheme: dark;
+}
 
-  /* Role colours (chips / dots). */
-  --color-role-gk: #b7791f;
-  --color-role-def: #2b6cb0;
-  --color-role-midc: #2f855a;
-  --color-role-midw: #6b46c1;
-  --color-role-fwd: #c53030;
+/* Tailwind utilities backed by the runtime tokens above (theme-able). */
+@theme inline {
+  --font-sans: Archivo, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --color-canvas: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-line: var(--line);
+  --color-line-2: var(--line-2);
+  --color-ink: var(--text);
+  --color-heading: var(--heading);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-chev: var(--chev);
+  --color-primary: var(--primary);
+  --color-btn: var(--btn-primary-bg);
+  --color-btn-fg: var(--btn-primary-fg);
+  --color-accent: var(--accent);
+  --color-accent-text: var(--accent-text);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-line: var(--accent-line);
+  --color-gold: var(--gold);
+  --color-gold-text: var(--gold-text);
+  --color-gold-soft: var(--gold-soft);
+  --color-pitch: var(--pitch);
+  --color-pitch-dark: var(--pitch-dark);
+  --color-pitch-line: var(--pitch-line);
+  --color-role-gk: var(--role-gk);
+  --color-role-def: var(--role-def);
+  --color-role-midc: var(--role-midc);
+  --color-role-midw: var(--role-midw);
+  --color-role-fwd: var(--role-fwd);
+  --color-role-gk-text: var(--role-gk-text);
+  --color-role-def-text: var(--role-def-text);
+  --color-role-midc-text: var(--role-midc-text);
+  --color-role-midw-text: var(--role-midw-text);
+  --color-role-fwd-text: var(--role-fwd-text);
+  --shadow-card: var(--shadow-card);
+  --shadow-float: var(--shadow-float);
 }
 
 html,
@@ -28,19 +137,21 @@ body,
   /* 100vh is wrong on iOS because of the address bar; dvh tracks the visible viewport. */
   height: 100dvh;
   margin: 0;
-  background: var(--color-paper);
-  color: var(--color-ink);
-  font-family:
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    Roboto,
-    sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Archivo, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
 }
 
 body {
   overscroll-behavior: none;
+}
+
+button,
+input,
+textarea {
+  font-family: inherit;
 }
 
 /* Pitch and bench: no double-tap zoom, no text selection, no long-press callout. */
@@ -51,19 +162,38 @@ body {
   -webkit-touch-callout: none;
 }
 
-/* Every interactive control is at least 48×48 px. */
+/* Every interactive control is at least 48×48 px (design allows 44 px inside dense rows). */
 .tap {
-  min-width: 48px;
-  min-height: 48px;
+  min-width: 44px;
+  min-height: 44px;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Bottom tab bar respects the iPhone home indicator. */
 .safe-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
-
 .safe-top {
   padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Section eyebrow: 11px / 800 / letter-spacing .12em / uppercase */
+.eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Hide scrollbars on horizontal strips (bench). */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  scrollbar-width: none;
 }

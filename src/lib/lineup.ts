@@ -83,7 +83,7 @@ function spread(n: number, inset = 0.16): number[] {
  */
 export function buildCustomFormation(id: string, name: string, counts: LineCounts): Formation {
   if (lineCountsTotal(counts) !== 7) throw new Error('Formation must have exactly 7 field players');
-  const slots: FormationSlot[] = [{ id: `${id}-gk`, role: 'GK', x: 0.5, y: 0.12 }];
+  const slots: FormationSlot[] = [{ id: `${id}-gk`, role: 'GK', x: 0.5, y: 0.14 }];
   let n = 1;
   const push = (role: PositionRole, x: number, y: number) => slots.push({ id: `${id}-${n++}`, role, x, y });
 

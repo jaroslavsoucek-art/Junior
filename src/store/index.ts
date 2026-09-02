@@ -459,11 +459,14 @@ export const useStore = create<AppState>()(
        * the new seed; anything with real data is left alone.
        */
       migrate: (persisted, fromVersion) => {
-        const s = persisted as Partial<AppData>;
-        if (fromVersion < SEED_REVISION && (s.matches?.length ?? 0) === 0 && (s.lineups?.length ?? 0) === 0) {
-          return { ...s, players: SEED_PLAYERS_BY_TEAM[ACTIVE_TEAM] } as AppState;
+        let s = persisted as Partial<AppData>;
+        if (fromVersion < SEED_REVISION) {
+          // seed formations: refresh coordinates (slot ids are stable, lineups keep working); custom ones untouched
+          const seedIds = new Set(SEED_FORMATIONS.map((f) => f.id));
+          s = { ...s, formations: [...SEED_FORMATIONS, ...(s.formations ?? []).filter((f) => !seedIds.has(f.id))] };
+          if ((s.matches?.length ?? 0) === 0 && (s.lineups?.length ?? 0) === 0) s = { ...s, players: SEED_PLAYERS_BY_TEAM[ACTIVE_TEAM] };
         }
-        return persisted as AppState;
+        return s as AppState;
       },
       partialize: (s) => ({ ...pickData(s), draft: s.draft, tab: s.tab, activeMatchId: s.activeMatchId, matchDetailId: s.matchDetailId, lineupView: s.lineupView }),
     },

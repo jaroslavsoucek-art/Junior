@@ -1,9 +1,10 @@
 import type { CSSProperties, Ref } from 'react';
-import type { Player, PositionRole } from '../types';
-import { RoleDot } from './RoleChip';
+import type { Player } from '../types';
+import { RoleTag } from './RoleChip';
 
 export type TileVisual = 'normal' | 'selected' | 'fit' | 'dim' | 'low';
 
+/** Bench tile (design: 90–92 × 74–76, role tag top-left, name, minutes; gold border when selected, red when under-played). */
 export function BenchTile({
   player,
   sub,
@@ -13,43 +14,39 @@ export function BenchTile({
   listeners,
   style,
   attributes,
+  width = 92,
 }: {
   player: Player;
-  sub?: string; // e.g. "12 min"
+  sub?: string;
   visual: TileVisual;
   onTap?: () => void;
   nodeRef?: Ref<HTMLButtonElement>;
   listeners?: Record<string, unknown>;
   attributes?: Record<string, unknown>;
   style?: CSSProperties;
+  width?: number;
 }) {
-  const border =
+  const frame =
     visual === 'selected'
-      ? 'border-accent ring-2 ring-accent'
-      : visual === 'fit'
-        ? 'border-primary'
-        : visual === 'low'
-          ? 'border-accent'
-          : 'border-ink/15';
+      ? 'border-2 border-gold bg-surface'
+      : visual === 'low'
+        ? 'border-2 border-accent bg-accent-soft'
+        : visual === 'fit'
+          ? 'border-2 border-primary/40 bg-surface'
+          : 'border border-line-2 bg-surface';
   return (
     <button
       ref={nodeRef}
       type="button"
       onClick={onTap}
-      style={style}
+      style={{ width, ...style }}
       {...listeners}
       {...attributes}
-      className={`tap flex h-[72px] w-[88px] shrink-0 flex-col items-center justify-center gap-1 rounded-xl border-2 bg-white px-1 ${border} ${
-        visual === 'dim' ? 'opacity-40' : ''
-      } ${visual === 'low' ? 'bg-accent/10' : ''}`}
+      className={`tap flex min-h-[76px] shrink-0 flex-col items-start justify-between rounded-2xl p-2.5 text-left ${frame} ${visual === 'dim' ? 'opacity-40' : ''}`}
     >
-      <span className="max-w-full truncate text-base font-bold leading-tight">{player.name}</span>
-      <span className="flex items-center gap-1">
-        {player.roles.map((r: PositionRole) => (
-          <RoleDot key={r} role={r} />
-        ))}
-        {sub && <span className="text-xs font-semibold text-ink-muted tabular-nums">{sub}</span>}
-      </span>
+      <span className="flex gap-1.5">{player.roles.length ? player.roles.map((r) => <RoleTag key={r} role={r} />) : <span className="text-[10px] font-extrabold tracking-[0.06em] text-faint">—</span>}</span>
+      <span className="max-w-full truncate text-[14px] font-bold text-ink">{player.name}</span>
+      {sub !== undefined && <span className={`tabular text-[11px] font-extrabold ${visual === 'low' ? 'text-accent-text' : 'text-muted'}`}>{sub}</span>}
     </button>
   );
 }

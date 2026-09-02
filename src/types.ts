@@ -61,6 +61,7 @@ export type Settings = {
   defaultHalvesCount: number;
   defaultRotationIntervalMin: number;
   wakeLockNoticeShown: boolean;
+  theme?: 'light' | 'dark' | 'system'; // vzhled, default light (na slunci čitelnější)
   // Cloud sync (Firebase) – volitelné
   clubCode?: string; // sdílený kód klubu
   deviceName?: string; // jméno tohoto telefonu v cloudu („Jarda iPhone“)

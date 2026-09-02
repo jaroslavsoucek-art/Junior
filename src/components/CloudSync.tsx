@@ -110,13 +110,13 @@ export function CloudSync({ onNotice }: { onNotice: (msg: string) => void }) {
       {/* 1. configuration */}
       {!source ? (
         <>
-          <p className="text-sm text-ink-muted">
+          <p className="text-sm text-muted">
             Sdílení dat mezi telefony přes Firebase. Na Netlify stačí proměnná <code>VITE_FIREBASE_CONFIG</code>; jinak sem vlož konfiguraci z Firebase konzole.
           </p>
           <Btn onClick={() => setConfigOpen(true)}>Vložit konfiguraci Firebase…</Btn>
         </>
       ) : (
-        <p className="text-xs text-ink-muted">
+        <p className="text-xs text-muted">
           Firebase: nakonfigurováno {source === 'env' ? 'v buildu (Netlify)' : 'v tomto telefonu'}.
           {source === 'local' && (
             <button
@@ -138,7 +138,7 @@ export function CloudSync({ onNotice }: { onNotice: (msg: string) => void }) {
       {source && (
         <div className="flex flex-col gap-2">
           <label className="flex flex-col gap-1">
-            <span className="text-sm font-semibold text-ink-muted">Kód klubu (stejný na všech telefonech)</span>
+            <span className="text-sm font-semibold text-muted">Kód klubu (stejný na všech telefonech)</span>
             <div className="flex gap-2">
               <input
                 value={codeInput}
@@ -155,7 +155,7 @@ export function CloudSync({ onNotice }: { onNotice: (msg: string) => void }) {
                 autoCapitalize="off"
                 autoCorrect="off"
                 spellCheck={false}
-                className="tap min-w-0 flex-1 rounded-xl border border-ink/20 bg-white px-3 font-mono text-base"
+                className="tap min-w-0 flex-1 rounded-xl border border-line-2 bg-surface px-3 font-mono text-base text-ink"
               />
               {!code && (
                 <Btn
@@ -187,14 +187,14 @@ export function CloudSync({ onNotice }: { onNotice: (msg: string) => void }) {
               )}
             </div>
           </label>
-          {code && !isValidClubCode(code) && <p className="text-sm font-semibold text-accent">Kód musí mít 16–64 znaků (písmena a číslice).</p>}
+          {code && !isValidClubCode(code) && <p className="text-sm font-semibold text-accent-text">Kód musí mít 16–64 znaků (písmena a číslice).</p>}
           <label className="flex items-center justify-between gap-3">
-            <span className="text-sm font-semibold text-ink-muted">Název tohoto telefonu</span>
+            <span className="text-sm font-semibold text-muted">Název tohoto telefonu</span>
             <input
               value={settings.deviceName ?? ''}
               placeholder={defaultDeviceName()}
               onChange={(e) => updateSettings({ deviceName: e.target.value })}
-              className="tap w-40 rounded-xl border border-ink/20 bg-white px-3 text-base"
+              className="tap w-40 rounded-xl border border-line-2 bg-surface px-3 text-base text-ink"
             />
           </label>
         </div>
@@ -202,22 +202,22 @@ export function CloudSync({ onNotice }: { onNotice: (msg: string) => void }) {
 
       {/* 3. status + actions */}
       {ready && (
-        <div className="flex flex-col gap-2 rounded-xl bg-paper p-3 text-sm">
+        <div className="flex flex-col gap-2 rounded-2xl bg-surface-3 p-3 text-sm">
           <div className="flex justify-between">
-            <span className="text-ink-muted">V cloudu (tým {ACTIVE_TEAM})</span>
+            <span className="text-muted">V cloudu (tým {ACTIVE_TEAM})</span>
             <span className="font-semibold tabular-nums">
               {busy === 'meta' ? 'načítám…' : meta === 'none' ? 'nic' : meta ? `${fmt(meta.updatedAt)} · ${meta.device}` : '—'}
             </span>
           </div>
           <div className="flex justify-between">
-            <span className="text-ink-muted">Tento telefon stáhl</span>
+            <span className="text-muted">Tento telefon stáhl</span>
             <span className="tabular-nums">{fmt(settings.lastDownloadAt)}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-ink-muted">Tento telefon nahrál</span>
+            <span className="text-muted">Tento telefon nahrál</span>
             <span className="tabular-nums">{fmt(settings.lastUploadAt)}</span>
           </div>
-          {cloudNewerThanMine && <p className="font-semibold text-accent">V cloudu je novější verze, než jsi naposledy stáhl. Nahráním bys ji přepsal.</p>}
+          {cloudNewerThanMine && <p className="font-semibold text-accent-text">V cloudu je novější verze, než jsi naposledy stáhl. Nahráním bys ji přepsal.</p>}
           <div className="mt-1 flex gap-2">
             <Btn kind="primary" className="flex-1" disabled={busy !== null} onClick={() => (cloudNewerThanMine ? setConfirmUp(true) : void doUpload())}>
               {busy === 'up' ? 'Nahrávám…' : '⬆ Nahrát do cloudu'}
@@ -226,23 +226,23 @@ export function CloudSync({ onNotice }: { onNotice: (msg: string) => void }) {
               {busy === 'down' ? 'Stahuji…' : '⬇ Stáhnout z cloudu'}
             </Btn>
           </div>
-          <button type="button" className="tap self-end text-xs text-ink-muted underline" onClick={() => void refreshMeta()}>
+          <button type="button" className="tap self-end text-xs text-muted underline" onClick={() => void refreshMeta()}>
             obnovit stav
           </button>
         </div>
       )}
-      {error && <p className="rounded-lg bg-accent/10 px-3 py-2 text-sm font-semibold text-accent">{error}</p>}
+      {error && <p className="rounded-xl bg-accent-soft px-3 py-2 text-sm font-semibold text-accent-text">{error}</p>}
 
       {configOpen && (
         <Modal title="Konfigurace Firebase" onClose={() => setConfigOpen(false)}>
-          <p className="mb-2 text-sm text-ink-muted">
+          <p className="mb-2 text-sm text-muted">
             Firebase konzole → Project settings → Your apps → Web app → zkopíruj blok <code>firebaseConfig</code> a vlož sem (JS i JSON tvar).
           </p>
           <textarea
             value={configText}
             onChange={(e) => setConfigText(e.target.value)}
             rows={8}
-            className="w-full rounded-xl border border-ink/20 bg-white p-3 font-mono text-xs"
+            className="w-full rounded-xl border border-line-2 bg-surface p-3 font-mono text-xs text-ink"
             placeholder={'{\n  "apiKey": "…",\n  "projectId": "…",\n  …\n}'}
           />
           <div className="mt-3 flex gap-2">
@@ -278,22 +278,22 @@ export function CloudSync({ onNotice }: { onNotice: (msg: string) => void }) {
       )}
       {pendingDown && (
         <Modal title="Stáhnout z cloudu" onClose={() => setPendingDown(null)}>
-          <p className="mb-2 text-sm text-ink-muted">
+          <p className="mb-2 text-sm text-muted">
             Verze z {fmt(pendingDown.meta.updatedAt)} · {pendingDown.meta.device}. Nahradí vše v tomto telefonu pro tým {ACTIVE_TEAM}.
           </p>
           <table className="mb-3 w-full text-base">
             <tbody>
               {pendingDown.preview.counts.map((c) => (
-                <tr key={c.label} className="border-t border-ink/10">
+                <tr key={c.label} className="border-t border-line">
                   <td className="py-2">{c.label}</td>
                   <td className="py-2 text-right tabular-nums">{c.current}</td>
-                  <td className={`py-2 text-right font-semibold tabular-nums ${c.current !== c.incoming ? 'text-accent' : ''}`}>{c.incoming}</td>
+                  <td className={`py-2 text-right font-semibold tabular-nums ${c.current !== c.incoming ? 'text-accent-text' : ''}`}>{c.incoming}</td>
                 </tr>
               ))}
             </tbody>
           </table>
           {pendingDown.preview.removedPlayers.length > 0 && (
-            <p className="text-sm text-accent">
+            <p className="text-sm text-accent-text">
               <b>Zmizí:</b> {pendingDown.preview.removedPlayers.join(', ')}
             </p>
           )}
@@ -301,7 +301,7 @@ export function CloudSync({ onNotice }: { onNotice: (msg: string) => void }) {
             <Btn className="flex-1" onClick={() => setPendingDown(null)}>
               Zrušit
             </Btn>
-            <Btn kind="danger" className="flex-1" onClick={applyDownload}>
+            <Btn kind="accent" className="flex-1" onClick={applyDownload}>
               Přepsat a stáhnout
             </Btn>
           </div>
