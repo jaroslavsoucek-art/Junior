@@ -172,7 +172,7 @@ export function CloudSync({ onNotice }: { onNotice: (msg: string) => void }) {
                 <Btn
                   onClick={async () => {
                     try {
-                      if (navigator.share) await navigator.share({ title: 'Kód klubu Junior', text: code });
+                      if (navigator.share) await navigator.share({ title: 'Kód klubu Junior 2014', text: code });
                       else {
                         await navigator.clipboard.writeText(code);
                         onNotice('Kód zkopírován');

@@ -1,4 +1,4 @@
-# Junior – sestavy 7+1
+# Junior 2014 – sestavy 7+1
 
 Lokální PWA pro trenéra mladších žáků: sestava před zápasem, střídání během zápasu, odehrané minuty.
 Bez backendu, bez účtů, bez sítě v runtime. Data žijí v `localStorage` telefonu.

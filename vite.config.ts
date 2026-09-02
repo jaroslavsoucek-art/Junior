@@ -18,8 +18,8 @@ export default defineConfig({
       injectRegister: 'auto',
       includeAssets: ['icons/*.png', 'favicon.png', 'favicon-32.png'],
       manifest: {
-        name: 'Junior – sestavy 7+1',
-        short_name: 'Junior',
+        name: 'Junior 2014 – sestavy 7+1',
+        short_name: 'Junior 2014',
         description: 'Sestava a střídání pro mladší žáky, systém 7+1.',
         lang: 'cs',
         start_url: base,
