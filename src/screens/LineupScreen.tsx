@@ -16,7 +16,7 @@ import { Pitch } from '../components/Pitch';
 import { SlotMarker, type SlotVisual } from '../components/SlotMarker';
 import { BenchTile, type TileVisual } from '../components/BenchTile';
 import { FormationModal } from '../components/FormationModal';
-import { LineupsModal } from '../components/LineupsModal';
+import { LineupsListScreen } from './LineupsListScreen';
 import { NamePrompt } from '../components/NamePrompt';
 import { MatchForm } from '../components/MatchForm';
 import { todayISO } from '../lib/match';
@@ -28,6 +28,12 @@ import type { FormationSlot, Player } from '../types';
 type Sel = { kind: 'bench'; playerId: string } | { kind: 'slot'; slotId: string } | null;
 
 export function LineupScreen() {
+  const view = useStore((s) => s.lineupView);
+  if (view === 'list') return <LineupsListScreen />;
+  return <LineupEditor />;
+}
+
+function LineupEditor() {
   const players = useStore((s) => s.players);
   const formations = useStore((s) => s.formations);
   const lineups = useStore((s) => s.lineups);
@@ -36,7 +42,7 @@ export function LineupScreen() {
   const act = useStore();
 
   const [sel, setSel] = useState<Sel>(null);
-  const [modal, setModal] = useState<'formation' | 'lineups' | 'saveAs' | 'newMatch' | null>(null);
+  const [modal, setModal] = useState<'formation' | 'saveAs' | 'newMatch' | null>(null);
   const settings = useStore((s) => s.settings);
   const [dragging, setDragging] = useState<string | null>(null);
 
@@ -175,11 +181,11 @@ export function LineupScreen() {
           ) : (
             <button
               type="button"
-              onClick={() => setModal('lineups')}
+              onClick={() => act.setLineupView('list')}
               className="tap flex min-w-0 flex-1 items-center justify-between rounded-xl border-2 border-ink/15 bg-white px-3 text-left"
-              aria-label="Uložené sestavy"
+              aria-label="Zpět na seznam sestav"
             >
-              <span className="truncate font-semibold">{draft.name || 'Neuložená sestava'}</span>
+              <span className="truncate font-semibold">← {draft.name || 'Neuložená sestava'}</span>
               <span className="ml-2 shrink-0 text-sm text-ink-muted">
                 {filled}/8 {isDirty && '•'}
               </span>
@@ -274,21 +280,6 @@ export function LineupScreen() {
           onClose={() => setModal(null)}
         />
       )}
-      {modal === 'lineups' && (
-        <LineupsModal
-          lineups={lineups.filter((l) => !l.matchId)}
-          formations={formations}
-          currentId={draft.lineupId}
-          onLoad={(id) => {
-            act.loadLineup(id);
-            setSel(null);
-          }}
-          onDuplicate={act.duplicateLineup}
-          onDelete={act.deleteLineup}
-          onRename={act.renameLineup}
-          onClose={() => setModal(null)}
-        />
-      )}
       {modal === 'newMatch' && (
         <MatchForm
           title={`Nový zápas · ${draft.name}`}
@@ -303,6 +294,7 @@ export function LineupScreen() {
           onSave={(input) => {
             act.createMatch(input, draft.lineupId);
             setModal(null);
+            act.setLineupView('list');
             act.setTab('match');
           }}
           onClose={() => setModal(null)}

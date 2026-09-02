@@ -27,7 +27,8 @@ export function LiveScreen() {
     if (!activeMatchId && live) setActiveMatch(live.id);
   }, [activeMatchId, live, setActiveMatch]);
 
-  const match = matches.find((m) => m.id === activeMatchId);
+  // A running match always wins over whatever was selected last.
+  const match = live ?? matches.find((m) => m.id === activeMatchId);
   if (!match) {
     return (
       <div className="px-4">

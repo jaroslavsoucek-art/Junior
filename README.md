@@ -125,6 +125,12 @@ scripts/gen-icons.swift  ikony z loga klubu (scripts/logo-src.png), bílé pozad
 - **Kádr** je řazený podle postů od brankáře (skupinové nadpisy), uvnitř abecedně; druhé řazení podle minut zůstává.
 - **Barvy podle loga**: `--color-primary` námořnická modř (#161c4b) pro tlačítka, aktivní tab a nadpisy; `--color-accent` klubová červená (#a4172a) pro varování a výběr; zlatá (#f2b826) jako doplňkový token. Hřiště zůstává zelené, to je čitelnost na slunci. Logo (`src/assets/logo.png`, průhledné) je v hlavičce Kádru, Zápasu a Live.
 
+### Seznamy jako vstup do tabů
+
+- **Sestava** otevře seznam uložených šablon (`LineupsListScreen`): otevřít v editoru, náhled hřiště, přejmenovat, duplikovat, smazat, „+ Nová sestava“; rozpracovaná neuložená sestava má vlastní kartu „Pokračovat“. Zápasové kopie jsou ve sbaleném oddílu. Editor je pod tím, prostřední tlačítko v jeho liště je „← název“ zpět na seznam.
+- **Zápas** otevře vždy seznam zápasů (i když byl detail otevřený); detail je podstránka se šipkou zpět. V seznamu jde zápas smazat (ne během hry), u dohraného s upozorněním, že zmizí minuty ze sezónního součtu.
+- Tap na tab v dolní liště vždy přistane na seznamu; hluboké odkazy (nový zápas ze sestavy, „Upravit pro zápas“) skočí rovnou do detailu/editoru. Stav `matchDetailId` a `lineupView` je persistovaný, `activeMatchId` (pro Live) je od něj oddělený a Live vždy preferuje právě hraný zápas.
+
 ### Dva týmy (A / B)
 
 - **Přepínač týmu** je v Nastavení. Každý tým má úplně oddělená data pod vlastním klíčem (`junior-v1-A`, `junior-v1-B`): kádr, sestavy, zápasy, minuty, rozpracovanou sestavu i nastavení. Aktivní tým je v `junior-team`. Přepnutí appku znovu načte, protože zustand store se vytváří nad konkrétním klíčem (`lib/team.ts`). Původní data z `junior-v1` se při prvním startu přesunou pod tým B.

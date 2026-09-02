@@ -11,11 +11,11 @@ import type { Match, Player } from '../types';
 
 export function MatchScreen() {
   const matches = useStore((s) => s.matches);
-  const activeMatchId = useStore((s) => s.activeMatchId);
-  const setActiveMatch = useStore((s) => s.setActiveMatch);
-  const active = matches.find((m) => m.id === activeMatchId);
+  const matchDetailId = useStore((s) => s.matchDetailId);
+  const openMatchDetail = useStore((s) => s.openMatchDetail);
+  const open = matches.find((m) => m.id === matchDetailId);
 
-  if (active) return <MatchDetail match={active} onBack={() => setActiveMatch(null)} />;
+  if (open) return <MatchDetail match={open} onBack={() => openMatchDetail(null)} />;
   return <MatchList />;
 }
 
@@ -25,8 +25,10 @@ function MatchList() {
   const matches = useStore((s) => s.matches);
   const settings = useStore((s) => s.settings);
   const createMatch = useStore((s) => s.createMatch);
-  const setActiveMatch = useStore((s) => s.setActiveMatch);
+  const openMatchDetail = useStore((s) => s.openMatchDetail);
+  const deleteMatch = useStore((s) => s.deleteMatch);
   const [creating, setCreating] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<Match | null>(null);
 
   const sorted = useMemo(
     () =>
@@ -53,11 +55,11 @@ function MatchList() {
       {sorted.length === 0 && <p className="mt-6 text-center text-ink-muted">Zatím žádný zápas.</p>}
       <ul className="mt-3 flex flex-col gap-2">
         {sorted.map((m) => (
-          <li key={m.id}>
+          <li key={m.id} className="flex gap-2">
             <button
               type="button"
-              onClick={() => setActiveMatch(m.id)}
-              className="tap flex w-full items-center justify-between rounded-xl border border-ink/10 bg-white px-4 py-3 text-left"
+              onClick={() => openMatchDetail(m.id)}
+              className="tap flex min-w-0 flex-1 items-center justify-between rounded-xl border border-ink/10 bg-white px-4 py-3 text-left"
             >
               <span className="flex min-w-0 flex-col">
                 <span className="truncate text-lg font-bold">vs {m.opponent}</span>
@@ -67,10 +69,33 @@ function MatchList() {
               </span>
               <span className={`ml-2 shrink-0 rounded-lg px-2 py-1 text-xs font-bold ${statusClass[m.status]}`}>{statusLabel[m.status]}</span>
             </button>
+            {m.status !== 'live' && (
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(m)}
+                className="tap rounded-xl border border-ink/10 bg-white px-3 text-ink-muted"
+                aria-label={`Smazat zápas vs ${m.opponent}`}
+              >
+                🗑
+              </button>
+            )}
           </li>
         ))}
       </ul>
 
+      {confirmDelete && (
+        <Confirm
+          title={`Smazat zápas vs ${confirmDelete.opponent}?`}
+          text={confirmDelete.status === 'finished' ? 'Dohraný zápas – jeho minuty zmizí ze sezónního součtu hráčů.' : 'Zápas včetně docházky, zápasové sestavy a plánu střídání zmizí.'}
+          confirmLabel="Smazat"
+          danger
+          onCancel={() => setConfirmDelete(null)}
+          onConfirm={() => {
+            deleteMatch(confirmDelete.id);
+            setConfirmDelete(null);
+          }}
+        />
+      )}
       {creating && (
         <MatchForm
           title="Nový zápas"
@@ -282,7 +307,10 @@ function MatchDetail({ match, onBack }: { match: Match; onBack: () => void }) {
             kind="primary"
             className="w-full py-4 text-lg"
             disabled={starting.filled < 8 || availableCount < MIN_PLAYERS}
-            onClick={() => act.setTab('live')}
+            onClick={() => {
+              act.setActiveMatch(match.id);
+              act.setTab('live');
+            }}
           >
             Přejít na Live
           </Btn>
@@ -292,7 +320,14 @@ function MatchDetail({ match, onBack }: { match: Match; onBack: () => void }) {
         </section>
       )}
       {match.status !== 'planned' && (
-        <Btn kind="primary" className="w-full py-4 text-lg" onClick={() => act.setTab('live')}>
+        <Btn
+          kind="primary"
+          className="w-full py-4 text-lg"
+          onClick={() => {
+            act.setActiveMatch(match.id);
+            act.setTab('live');
+          }}
+        >
           {match.status === 'live' ? 'Zpět do Live' : 'Zobrazit průběh'}
         </Btn>
       )}

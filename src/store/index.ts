@@ -35,9 +35,13 @@ export type MatchInput = Pick<Match, 'opponent' | 'date' | 'halfLengthMin' | 'ha
 export type AppState = AppData & {
   draft: Draft;
   tab: TabId; // persisted so a killed app reopens where it was (Live during a match)
-  activeMatchId: string | null; // match shown in Zápas detail / Live
+  activeMatchId: string | null; // match used by Live
+  matchDetailId: string | null; // match open in the Zápas tab (null = list)
+  lineupView: 'list' | 'editor'; // Sestava tab: saved lineups first, editor behind
   setTab: (tab: TabId) => void;
   setActiveMatch: (id: string | null) => void;
+  openMatchDetail: (id: string | null) => void;
+  setLineupView: (v: 'list' | 'editor') => void;
 
   // Bulk replace – used by import and "smazat všechna data".
   replaceAll: (data: AppData) => void;
@@ -167,8 +171,12 @@ export const useStore = create<AppState>()(
       draft: emptyDraft(),
       tab: 'roster',
       activeMatchId: null,
+      matchDetailId: null,
+      lineupView: 'list',
       setTab: (tab) => set({ tab }),
       setActiveMatch: (id) => set({ activeMatchId: id }),
+      openMatchDetail: (id) => set({ matchDetailId: id }),
+      setLineupView: (v) => set({ lineupView: v }),
 
       replaceAll: (data) => set(() => ({ ...data, draft: emptyDraft(data.formations), activeMatchId: null })),
       resetToSeed: () => set(() => ({ ...seedData(), draft: emptyDraft(), activeMatchId: null })),
@@ -288,6 +296,7 @@ export const useStore = create<AppState>()(
             },
           ],
           activeMatchId: id,
+          matchDetailId: id,
         }));
         return id;
       },
@@ -298,6 +307,7 @@ export const useStore = create<AppState>()(
           matches: s.matches.filter((m) => m.id !== id),
           lineups: s.lineups.filter((l) => l.matchId !== id),
           activeMatchId: s.activeMatchId === id ? null : s.activeMatchId,
+          matchDetailId: s.matchDetailId === id ? null : s.matchDetailId,
           draft: s.draft.matchId === id ? emptyDraft(s.formations) : s.draft,
         })),
       toggleAvailability: (matchId, playerId) =>
@@ -331,6 +341,7 @@ export const useStore = create<AppState>()(
           matches: st.matches.map((m) => (m.id === matchId ? { ...m, startingLineupId: id } : m)),
           draft: { lineupId: id, name: lineup.name, formationId, assignments: lineup.assignments, matchId },
           tab: 'lineup',
+          lineupView: 'editor',
         }));
       },
       editMatchLineup: (matchId) => {
@@ -358,9 +369,10 @@ export const useStore = create<AppState>()(
             matchId,
           },
           tab: 'lineup',
+          lineupView: 'editor',
         });
       },
-      leaveMatchEditing: () => set((s) => ({ draft: emptyDraft(s.formations), tab: 'match' })),
+      leaveMatchEditing: () => set((s) => ({ draft: emptyDraft(s.formations), tab: 'match', matchDetailId: s.draft.matchId, lineupView: 'list' })),
 
       setRotationPartner: (matchId, playerId, slotId) =>
         patchMatch(set, matchId, (m) => ({ ...m, rotationGroups: setPartner(m.rotationGroups, playerId, slotId) })),
@@ -441,7 +453,7 @@ export const useStore = create<AppState>()(
       name: STORAGE_KEY,
       version: 1,
       storage: createJSONStorage(() => localStorage),
-      partialize: (s) => ({ ...pickData(s), draft: s.draft, tab: s.tab, activeMatchId: s.activeMatchId }),
+      partialize: (s) => ({ ...pickData(s), draft: s.draft, tab: s.tab, activeMatchId: s.activeMatchId, matchDetailId: s.matchDetailId, lineupView: s.lineupView }),
     },
   ),
 );
