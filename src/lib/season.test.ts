@@ -18,6 +18,7 @@ function match(status: Match['status'], events: Match['events']): Match {
     status,
     rotationIntervalMin: 5,
     rotateGoalkeeper: false,
+    rotationGroups: {},
   };
 }
 

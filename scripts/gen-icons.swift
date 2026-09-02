@@ -76,3 +76,6 @@ save(render(src, box: box, size: 512, fill: 0.72, bg: white), "\(outDir)/icons/i
 // Browser tab favicon: transparent background is fine here.
 save(render(src, box: box, size: 64, fill: 1.0, bg: nil), "\(outDir)/favicon.png")
 save(render(src, box: box, size: 32, fill: 1.0, bg: nil), "\(outDir)/favicon-32.png")
+// In-app logo (header), transparent.
+try? FileManager.default.createDirectory(atPath: "src/assets", withIntermediateDirectories: true)
+save(render(src, box: box, size: 256, fill: 1.0, bg: nil), "src/assets/logo.png")

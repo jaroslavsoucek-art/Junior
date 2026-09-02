@@ -103,3 +103,101 @@ export function computeLoad(availableIds: string[], seconds: Record<string, numb
     .sort((a, b) => a.seconds - b.seconds);
   return { avg, rows };
 }
+
+// ---------------------------------------------------------------------------
+// Rotation plan prepared before the match: slotId -> players who share that
+// position (the starter plus the bench players who rotate into it).
+
+export type RotationGroups = Record<string, string[]>;
+
+const ROLE_ORDER: Record<PositionRole, number> = { GK: 0, DEF: 1, MID_C: 2, MID_W: 3, FWD: 4 };
+
+/**
+ * Auto plan: every bench player joins the slot he fits best; slots that do not
+ * have a partner yet are preferred so minutes spread over as many positions
+ * as possible. Pure GKs stay out unless the goalkeeper rotates.
+ */
+export function planRotationGroups(
+  formation: Formation,
+  starting: Record<string, string | null>,
+  benchIds: string[],
+  players: Player[],
+  rotateGoalkeeper: boolean,
+): RotationGroups {
+  const byId = new Map(players.map((p) => [p.id, p]));
+  const groups: RotationGroups = {};
+  for (const s of formation.slots) if (starting[s.id]) groups[s.id] = [starting[s.id]!];
+
+  const bench = benchIds
+    .filter((id) => byId.has(id))
+    .sort((a, b) => ROLE_ORDER[byId.get(a)!.roles[0] ?? 'FWD'] - ROLE_ORDER[byId.get(b)!.roles[0] ?? 'FWD'] || byId.get(a)!.name.localeCompare(byId.get(b)!.name, 'cs'));
+
+  for (const pid of bench) {
+    const p = byId.get(pid)!;
+    if (p.roles.length === 1 && p.roles[0] === 'GK' && !rotateGoalkeeper) continue;
+    const best = formation.slots
+      .filter((s) => groups[s.id] && (rotateGoalkeeper || s.role !== 'GK'))
+      .map((s) => ({ id: s.id, fit: roleFit(p, s.role), size: groups[s.id].length }))
+      .sort((a, b) => b.fit - a.fit || a.size - b.size)[0];
+    if (best) groups[best.id].push(pid);
+  }
+  return groups;
+}
+
+/** Move a player to another slot's group (or out of the plan with `slotId = null`). */
+export function setRotationPartner(groups: RotationGroups, playerId: string, slotId: string | null): RotationGroups {
+  const out: RotationGroups = {};
+  for (const [k, v] of Object.entries(groups)) out[k] = v.filter((id) => id !== playerId);
+  if (slotId) out[slotId] = [...(out[slotId] ?? []), playerId];
+  return out;
+}
+
+/** Keep only slots of this formation and players that are available. */
+export function sanitizeGroups(groups: RotationGroups, formation: Formation, availableIds: string[]): RotationGroups {
+  const slots = new Set(formation.slots.map((s) => s.id));
+  const avail = new Set(availableIds);
+  const out: RotationGroups = {};
+  for (const [k, v] of Object.entries(groups)) {
+    if (!slots.has(k)) continue;
+    const ids = v.filter((id) => avail.has(id));
+    if (ids.length) out[k] = ids;
+  }
+  return out;
+}
+
+/**
+ * Live proposal from the plan: for every slot group, the group member on the
+ * bench with the fewest minutes comes on for the current occupant. Bench
+ * players outside the plan are then placed by the generic fit rule on slots
+ * not yet used. One tap executes the whole batch.
+ */
+export function proposeFromPlan(input: RotationInput, groups: RotationGroups): RotationPair[] {
+  const bench = new Set(input.benchIds);
+  const used = new Set<string>();
+  const placed = new Set<string>();
+  const pairs: RotationPair[] = [];
+  const sec = (id: string) => input.seconds[id] ?? 0;
+
+  for (const slot of input.formation.slots) {
+    const occupant = input.onPitch[slot.id];
+    const members = (groups[slot.id] ?? []).filter((id) => bench.has(id) && !placed.has(id));
+    if (!occupant || members.length === 0) continue;
+    if (slot.role === 'GK' && !input.rotateGoalkeeper) continue;
+    const on = members.sort((a, b) => sec(a) - sec(b))[0];
+    pairs.push({ onPlayerId: on, offPlayerId: occupant, slotId: slot.id });
+    used.add(slot.id);
+    placed.add(on);
+  }
+  const rest = proposeRotation({ ...input, benchIds: input.benchIds.filter((id) => !placed.has(id)), onPitch: Object.fromEntries(Object.entries(input.onPitch).filter(([s]) => !used.has(s))) });
+  return [...pairs, ...rest];
+}
+
+/** After a substitution, keep the plan in sync: both players belong to that slot's group. */
+export function absorbSubs(groups: RotationGroups, subs: RotationPair[]): RotationGroups {
+  let out = groups;
+  for (const s of subs) {
+    out = setRotationPartner(out, s.onPlayerId, s.slotId);
+    if (!(out[s.slotId] ?? []).includes(s.offPlayerId)) out = { ...out, [s.slotId]: [...(out[s.slotId] ?? []), s.offPlayerId] };
+  }
+  return out;
+}

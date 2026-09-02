@@ -27,7 +27,7 @@ export function BenchTile({
     visual === 'selected'
       ? 'border-accent ring-2 ring-accent'
       : visual === 'fit'
-        ? 'border-pitch'
+        ? 'border-primary'
         : visual === 'low'
           ? 'border-accent'
           : 'border-ink/15';

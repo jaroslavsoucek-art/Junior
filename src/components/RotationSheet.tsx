@@ -4,8 +4,18 @@ import { cyclePairOff, proposeRotation, type RotationInput, type RotationPair } 
 import { formatClock } from '../lib/minutes';
 import { ROLE_SHORT, type Player } from '../types';
 
-export function RotationSheet({ input, onConfirm, onClose }: { input: RotationInput; onConfirm: (pairs: RotationPair[]) => void; onClose: () => void }) {
-  const [pairs, setPairs] = useState<RotationPair[]>(() => proposeRotation(input));
+export function RotationSheet({
+  input,
+  initialPairs,
+  onConfirm,
+  onClose,
+}: {
+  input: RotationInput;
+  initialPairs?: RotationPair[];
+  onConfirm: (pairs: RotationPair[]) => void;
+  onClose: () => void;
+}) {
+  const [pairs, setPairs] = useState<RotationPair[]>(() => initialPairs ?? proposeRotation(input));
   const byId = new Map(input.players.map((p) => [p.id, p]));
   const slotRole = (slotId: string) => input.formation.slots.find((s) => s.id === slotId)?.role;
   const name = (id: string) => byId.get(id)?.name ?? id;
@@ -21,7 +31,7 @@ export function RotationSheet({ input, onConfirm, onClose }: { input: RotationIn
           return (
             <li key={pair.onPlayerId} className="flex items-stretch gap-2 rounded-xl border border-ink/10 bg-white p-2">
               <div className="flex min-w-0 flex-1 flex-col justify-center px-2">
-                <span className="truncate text-lg font-bold text-pitch">▲ {on?.name}</span>
+                <span className="truncate text-lg font-bold text-primary">▲ {on?.name}</span>
                 <span className="text-xs text-ink-muted tabular-nums">{secs(pair.onPlayerId)} odehráno</span>
               </div>
               <button

@@ -39,8 +39,8 @@ export function Btn({
 }) {
   const look = {
     default: 'bg-white border border-ink/20 text-ink',
-    primary: 'bg-pitch text-white',
-    danger: 'bg-role-fwd text-white',
+    primary: 'bg-primary text-white',
+    danger: 'bg-accent text-white',
     ghost: 'bg-transparent text-ink-muted',
   }[kind];
   return (

@@ -23,7 +23,7 @@ export function TabBar({ active, onChange }: { active: TabId; onChange: (t: TabI
             aria-current={isActive ? 'page' : undefined}
             className={
               'tap flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-xs font-semibold ' +
-              (isActive ? 'text-pitch' : 'text-ink-muted')
+              (isActive ? 'text-primary' : 'text-ink-muted')
             }
           >
             <span className="text-2xl leading-none" aria-hidden>

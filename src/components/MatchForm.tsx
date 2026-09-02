@@ -57,7 +57,7 @@ export function MatchForm({
             type="button"
             onClick={() => setV({ ...v, rotateGoalkeeper: !v.rotateGoalkeeper })}
             aria-pressed={v.rotateGoalkeeper}
-            className={`tap mt-5 rounded-xl border-2 px-3 text-left font-semibold ${v.rotateGoalkeeper ? 'border-pitch bg-pitch text-white' : 'border-ink/20 bg-white'}`}
+            className={`tap mt-5 rounded-xl border-2 px-3 text-left font-semibold ${v.rotateGoalkeeper ? 'border-primary bg-primary text-white' : 'border-ink/20 bg-white'}`}
           >
             {v.rotateGoalkeeper ? 'Točit i brankáře' : 'Brankář se netočí'}
           </button>

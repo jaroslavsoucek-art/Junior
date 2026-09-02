@@ -41,7 +41,7 @@ export function FormationModal({
                   onClose();
                 }}
                 className={`tap flex flex-1 items-center justify-between rounded-xl border-2 px-4 text-left text-lg font-bold ${
-                  f.id === currentId ? 'border-pitch bg-pitch text-white' : 'border-ink/15 bg-white'
+                  f.id === currentId ? 'border-primary bg-primary text-white' : 'border-ink/15 bg-white'
                 }`}
               >
                 <span>{f.name}</span>
@@ -88,7 +88,7 @@ export function FormationModal({
               </div>
             </div>
           ))}
-          <p className={`text-center font-semibold ${total === 7 ? 'text-pitch' : 'text-accent'}`}>
+          <p className={`text-center font-semibold ${total === 7 ? 'text-primary' : 'text-accent'}`}>
             {total} / 7 hráčů v poli {total === 7 ? `· ${defaultCustomName(counts)}` : ''}
           </p>
           <div className="flex gap-2">

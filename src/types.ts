@@ -44,6 +44,8 @@ export type Match = {
   // Rotace lavičky: každých N minut appka navrhne tolik střídání, kolik je hráčů na lavičce.
   rotationIntervalMin: number; // default 5
   rotateGoalkeeper: boolean; // default false – brankář se netočí
+  // Plán střídání: slotId -> hráči, kteří se na tomto postu točí (starter + náhradníci).
+  rotationGroups: Record<string, string[]>;
 };
 
 export type MatchEvent =

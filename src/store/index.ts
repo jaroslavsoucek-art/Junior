@@ -7,7 +7,7 @@ import { newId } from '../lib/id';
 import { remapAssignments, type Assignments } from '../lib/lineup';
 import { clockState, withoutLastBatch } from '../lib/minutes';
 import { startingLineup } from '../lib/match';
-import type { RotationPair } from '../lib/rotation';
+import { absorbSubs, planRotationGroups, setRotationPartner as setPartner, type RotationPair } from '../lib/rotation';
 
 export type AppData = {
   players: Player[];
@@ -67,7 +67,7 @@ export type AppState = AppData & {
   deleteFormation: (formationId: string) => void;
 
   // Zápas – příprava
-  createMatch: (input: MatchInput) => string;
+  createMatch: (input: MatchInput, startingLineupId?: string | null) => string;
   updateMatch: (id: string, patch: Partial<MatchInput>) => void;
   deleteMatch: (id: string) => void;
   toggleAvailability: (matchId: string, playerId: string) => void;
@@ -82,6 +82,10 @@ export type AppState = AppData & {
   editMatchLineup: (matchId: string) => void;
   /** Leave match mode in the editor (draft goes back to a plain template draft). */
   leaveMatchEditing: () => void;
+
+  // Plán střídání (příprava)
+  setRotationPartner: (matchId: string, playerId: string, slotId: string | null) => void;
+  autoPlanRotation: (matchId: string) => void;
 
   // Live – every action appends events; minutes are always derived from them
   startMatch: (matchId: string) => void; // status live + PLAYER_ON for the starting eight
@@ -123,6 +127,14 @@ export function seedData(): AppData {
 type Setter = (fn: (s: AppState) => Partial<AppState>) => void;
 function patchMatch(set: Setter, id: string, fn: (m: Match) => Match) {
   set((s) => ({ matches: s.matches.map((m) => (m.id === id ? fn(m) : m)) }));
+}
+
+function autoGroups(m: Match, s: AppData): Record<string, string[]> {
+  const starting = startingLineup(m, s.lineups, s.formations, s.players);
+  if (!starting.formation) return {};
+  const onPitch = new Set(Object.values(starting.assignments).filter(Boolean));
+  const bench = m.availablePlayerIds.filter((id) => !onPitch.has(id));
+  return planRotationGroups(starting.formation, starting.assignments, bench, s.players, m.rotateGoalkeeper);
 }
 
 function matchLineupName(m: Match): string {
@@ -258,7 +270,7 @@ export const useStore = create<AppState>()(
           draft: s.draft.lineupId === lineupId ? { ...s.draft, name: name.trim() } : s.draft,
         })),
 
-      createMatch: (input) => {
+      createMatch: (input, startingLineupId = null) => {
         const id = newId('m');
         set((s) => ({
           matches: [
@@ -269,9 +281,10 @@ export const useStore = create<AppState>()(
               opponent: input.opponent.trim(),
               // default: everyone in the squad is present, the coach taps the absent ones off
               availablePlayerIds: s.players.filter((p) => p.active).map((p) => p.id),
-              startingLineupId: null,
+              startingLineupId,
               events: [],
               status: 'planned',
+              rotationGroups: {},
             },
           ],
           activeMatchId: id,
@@ -349,6 +362,15 @@ export const useStore = create<AppState>()(
       },
       leaveMatchEditing: () => set((s) => ({ draft: emptyDraft(s.formations), tab: 'match' })),
 
+      setRotationPartner: (matchId, playerId, slotId) =>
+        patchMatch(set, matchId, (m) => ({ ...m, rotationGroups: setPartner(m.rotationGroups, playerId, slotId) })),
+      autoPlanRotation: (matchId) => {
+        const s = get();
+        const match = s.matches.find((m) => m.id === matchId);
+        if (!match) return;
+        patchMatch(set, matchId, (m) => ({ ...m, rotationGroups: autoGroups(m, s) }));
+      },
+
       startMatch: (matchId) => {
         const s = get();
         const match = s.matches.find((m) => m.id === matchId);
@@ -358,7 +380,13 @@ export const useStore = create<AppState>()(
         const events: MatchEvent[] = Object.entries(starting.assignments)
           .filter((e): e is [string, string] => !!e[1])
           .map(([slotId, playerId]) => ({ type: 'PLAYER_ON', at, playerId, slotId }));
-        patchMatch(set, matchId, (m) => ({ ...m, status: 'live', events: [...m.events, ...events] }));
+        patchMatch(set, matchId, (m) => ({
+          ...m,
+          status: 'live',
+          events: [...m.events, ...events],
+          // no plan prepared → plan now, so the one-button rotation works anyway
+          rotationGroups: Object.keys(m.rotationGroups ?? {}).length ? m.rotationGroups : autoGroups(m, s),
+        }));
         set({ activeMatchId: matchId, tab: 'live' });
       },
       startPeriod: (matchId, period) =>
@@ -376,7 +404,11 @@ export const useStore = create<AppState>()(
         patchMatch(set, matchId, (m) => {
           if (m.status !== 'live' || subs.length === 0) return m;
           const at = Date.now();
-          return { ...m, events: [...m.events, ...subs.map((x) => ({ type: 'SUB' as const, at, ...x }))] };
+          return {
+            ...m,
+            events: [...m.events, ...subs.map((x) => ({ type: 'SUB' as const, at, ...x }))],
+            rotationGroups: absorbSubs(m.rotationGroups ?? {}, subs),
+          };
         }),
       playerOn: (matchId, playerId, slotId) =>
         patchMatch(set, matchId, (m) => (m.status === 'live' ? { ...m, events: [...m.events, { type: 'PLAYER_ON', at: Date.now(), playerId, slotId }] } : m)),

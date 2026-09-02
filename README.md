@@ -104,6 +104,14 @@ scripts/gen-icons.swift  ikony z loga klubu (scripts/logo-src.png), bílé pozad
 - **Konec zápasu** (s potvrzením) doplní chybějící `PERIOD_END`, nastaví `finished`, zamkne ovládání a rozbalí Vytížení. Minuty se od té chvíle počítají do sezónního součtu na Kádru.
 - **Obnova**: Live se po startu appky vrátí k rozehranému zápasu (persistovaný `tab` + `activeMatchId`, a když chybí, najde se zápas se `status: live`).
 
+### UX kolo 1 (po fázi 6)
+
+- **Tok napříč appkou**: Kádr → Sestava (postav a ulož šablonu) → tlačítko „Připravit zápas s touto sestavou →“ přímo v editoru založí zápas s touto sestavou → detail zápasu má očíslované kroky 1 Docházka · 2 Startovní sestava · 3 Střídání a rotace · 4 Zápas → Live.
+- **Plán střídání v přípravě** (`Match.rotationGroups`: slotId → hráči, kteří se na tom postu točí). Každý hráč z lavičky má řádek „↔ za koho“; tap přepíná posty seřazené podle fitu (jeho post → příbuzný → jiný → netočí se). „Navrhnout podle postů“ = `planRotationGroups`: nejlepší fit, přednost mají posty bez parťáka, aby se minuty rozložily na co nejvíc pozic. Když plán chybí, vytvoří se automaticky při zahájení zápasu.
+- **Live jedním tlačítkem**: rotační pruh ukazuje odpočet, plánované dvojice a „Provést rotaci (n)“. `proposeFromPlan`: v každé skupině jde na hřiště ten z lavičky s nejmíň minutami za aktuálního hráče na postu; hráči mimo plán se doplní obecným pravidlem. „Upravit“ otevře stejný návrh k ruční změně. Po každém střídání se plán synchronizuje (`absorbSubs`), takže příště se točí zpět ten, kdo šel dolů.
+- **Kádr** je řazený podle postů od brankáře (skupinové nadpisy), uvnitř abecedně; druhé řazení podle minut zůstává.
+- **Barvy podle loga**: `--color-primary` námořnická modř (#161c4b) pro tlačítka, aktivní tab a nadpisy; `--color-accent` klubová červená (#a4172a) pro varování a výběr; zlatá (#f2b826) jako doplňkový token. Hřiště zůstává zelené, to je čitelnost na slunci. Logo (`src/assets/logo.png`, průhledné) je v hlavičce Kádru, Zápasu a Live.
+
 ## Dodatek k zadání: rotace lavičky (fáze 5 + 6)
 
 Trenér chce točit všechny hráče na lavičce v pevném intervalu (např. 5 min) na jejich postech.

@@ -9,7 +9,8 @@ import { LoadPanel } from '../components/LoadPanel';
 import { useNow } from '../hooks/useNow';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { clockState, computeMinutes, formatClock, onPitch as computeOnPitch, periodElapsedSec } from '../lib/minutes';
-import { computeLoad, playSecondsSince, rotationAnchor, type RotationInput, type RotationPair } from '../lib/rotation';
+import { computeLoad, playSecondsSince, proposeFromPlan, rotationAnchor, sanitizeGroups, type RotationInput, type RotationPair } from '../lib/rotation';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { startingLineup } from '../lib/match';
 import { roleFit } from '../lib/lineup';
 import type { Formation, Match, Player } from '../types';
@@ -30,7 +31,7 @@ export function LiveScreen() {
   if (!match) {
     return (
       <div className="px-4">
-        <h1 className="py-4 text-2xl font-bold">Live</h1>
+        <ScreenHeader title="Live" subtitle="Průběh zápasu" />
         <p className="text-ink-muted">Žádný zápas není vybraný.</p>
         <Btn className="mt-4 w-full" onClick={() => setTab('match')}>
           Přejít na Zápas
@@ -54,12 +55,12 @@ function PreMatch({ match }: { match: Match }) {
   const ready = starting.filled === 8;
   return (
     <div className="flex h-full flex-col px-4 pb-4">
-      <h1 className="py-3 text-2xl font-bold">vs {match.opponent}</h1>
-      <p className="text-ink-muted">
-        {match.halvesCount}×{match.halfLengthMin} min · rotace každých {match.rotationIntervalMin} min · k dispozici {match.availablePlayerIds.length}
-      </p>
+      <ScreenHeader
+        title={`vs ${match.opponent}`}
+        subtitle={`${match.halvesCount}×${match.halfLengthMin} min · rotace každých ${match.rotationIntervalMin} min · k dispozici ${match.availablePlayerIds.length}`}
+      />
       <div className="my-4 rounded-2xl border border-ink/10 bg-white p-4">
-        <p className={`text-lg font-bold ${ready ? 'text-pitch' : 'text-accent'}`}>Startovní osmička: {starting.filled} / 8</p>
+        <p className={`text-lg font-bold ${ready ? 'text-primary' : 'text-accent'}`}>Startovní osmička: {starting.filled} / 8</p>
         {!ready && <p className="mt-1 text-sm text-ink-muted">Doplň sestavu v tabu Zápas.</p>}
         {starting.formation && (
           <p className="mt-1 text-sm text-ink-muted">
@@ -208,6 +209,9 @@ function LiveMatch({ match }: { match: Match }) {
   const rotationInput: RotationInput | null = formation
     ? { formation, onPitch: pitch, benchIds: bench.map((b) => b.id), players, seconds, rotateGoalkeeper: match.rotateGoalkeeper }
     : null;
+  // Planned pairs (from the prep plan, kept in sync after every substitution) – one tap executes them.
+  const planPairs: RotationPair[] =
+    rotationInput && formation ? proposeFromPlan(rotationInput, sanitizeGroups(match.rotationGroups ?? {}, formation, available)) : [];
 
   function executeRotation(pairs: RotationPair[]) {
     act.substitute(match.id, pairs);
@@ -275,19 +279,29 @@ function LiveMatch({ match }: { match: Match }) {
           )}
         </div>
 
-        {/* rotation bar */}
+        {/* rotation bar: countdown + one-button execution of the planned pairs */}
         {!finished && (
-          <button
-            type="button"
-            onClick={() => setRotationOpen(true)}
-            disabled={!rotationInput || bench.length === 0}
-            className={`tap mt-2 flex w-full items-center justify-between rounded-xl border-2 px-3 font-bold ${
-              due ? 'border-accent bg-accent text-white' : 'border-ink/15 bg-white'
-            }`}
-          >
-            <span>{due ? 'Střídat! Rotace je na řadě' : anchor === null ? 'Rotace po startu' : `Střídání za ${formatClock(remaining)}`}</span>
-            <span className="text-sm font-semibold">{due ? 'Navrhnout ▸' : `každých ${match.rotationIntervalMin} min ▸`}</span>
-          </button>
+          <div className={`mt-2 rounded-xl border-2 p-2 ${due ? 'border-accent bg-accent/10' : 'border-ink/15 bg-white'}`}>
+            <div className="flex items-center justify-between px-1">
+              <span className={`font-bold ${due ? 'text-accent' : ''}`}>
+                {due ? 'Střídat! Rotace je na řadě' : anchor === null ? 'Rotace po startu' : `Střídání za ${formatClock(remaining)}`}
+              </span>
+              <span className="text-xs font-semibold text-ink-muted">každých {match.rotationIntervalMin} min</span>
+            </div>
+            {planPairs.length > 0 && (
+              <p className="truncate px-1 text-xs text-ink-muted">
+                {planPairs.map((p) => `${name(p.onPlayerId)} ↔ ${name(p.offPlayerId)}`).join(' · ')}
+              </p>
+            )}
+            <div className="mt-1 flex gap-2">
+              <Btn kind={due ? 'danger' : 'primary'} className="flex-1 py-2" disabled={planPairs.length === 0 || state.kind === 'not_started'} onClick={() => executeRotation(planPairs)}>
+                Provést rotaci ({planPairs.length})
+              </Btn>
+              <Btn className="px-3 py-2" disabled={!rotationInput || bench.length === 0} onClick={() => setRotationOpen(true)}>
+                Upravit
+              </Btn>
+            </div>
+          </div>
         )}
         {!wakeLockSupported && !finished && !settings.wakeLockNoticeShown && (
           <button
@@ -354,7 +368,7 @@ function LiveMatch({ match }: { match: Match }) {
 
       {!finished && state.kind !== 'not_started' && state.kind !== 'stopped' && (
         <div className="border-t border-ink/10 bg-white px-3 py-2">
-          <Btn kind="ghost" className="w-full text-role-fwd" onClick={() => setConfirmFinish(true)}>
+          <Btn kind="ghost" className="w-full text-accent" onClick={() => setConfirmFinish(true)}>
             Konec zápasu
           </Btn>
         </div>
@@ -378,7 +392,9 @@ function LiveMatch({ match }: { match: Match }) {
         </div>
       )}
 
-      {rotationOpen && rotationInput && <RotationSheet input={rotationInput} onConfirm={executeRotation} onClose={() => setRotationOpen(false)} />}
+      {rotationOpen && rotationInput && (
+        <RotationSheet input={rotationInput} initialPairs={planPairs} onConfirm={executeRotation} onClose={() => setRotationOpen(false)} />
+      )}
       {confirmFinish && (
         <Confirm
           title="Ukončit zápas?"

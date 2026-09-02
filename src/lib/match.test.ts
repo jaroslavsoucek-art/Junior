@@ -15,7 +15,7 @@ const lineup: Lineup = {
 const match = (available: string[]): Match => ({
   id: 'm1', opponent: 'X', date: '2026-09-06', halfLengthMin: 30, halvesCount: 2,
   availablePlayerIds: available, startingLineupId: 'l1', events: [], status: 'planned',
-  rotationIntervalMin: 5, rotateGoalkeeper: false,
+  rotationIntervalMin: 5, rotateGoalkeeper: false, rotationGroups: {},
 });
 
 describe('startingLineup', () => {

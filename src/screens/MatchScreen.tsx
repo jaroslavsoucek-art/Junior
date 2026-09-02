@@ -3,6 +3,8 @@ import { useStore, type MatchInput } from '../store';
 import { Btn, Confirm } from '../components/Modal';
 import { MatchForm } from '../components/MatchForm';
 import { LineupPreview } from '../components/LineupPreview';
+import { RotationPlan } from '../components/RotationPlan';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { RoleDot } from '../components/RoleChip';
 import { formatMatchDate, MIN_PLAYERS, startingLineup, todayISO } from '../lib/match';
 import type { Match, Player } from '../types';
@@ -39,12 +41,12 @@ function MatchList() {
   const statusClass: Record<Match['status'], string> = {
     planned: 'bg-ink/10 text-ink',
     live: 'bg-accent text-white',
-    finished: 'bg-pitch/15 text-pitch',
+    finished: 'bg-primary/15 text-primary',
   };
 
   return (
     <div className="px-4 pb-4">
-      <h1 className="py-3 text-2xl font-bold">Zápas</h1>
+      <ScreenHeader title="Zápas" subtitle="Docházka → sestava → plán střídání → Live" />
       <Btn kind="primary" className="w-full" onClick={() => setCreating(true)}>
         + Nový zápas
       </Btn>
@@ -134,7 +136,7 @@ function MatchDetail({ match, onBack }: { match: Match; onBack: () => void }) {
           </p>
         </div>
         {!locked && (
-          <button type="button" onClick={() => setEditing(true)} className="tap rounded-xl px-3 font-semibold text-pitch" aria-label="Upravit zápas">
+          <button type="button" onClick={() => setEditing(true)} className="tap rounded-xl px-3 font-semibold text-primary" aria-label="Upravit zápas">
             Upravit
           </button>
         )}
@@ -143,8 +145,8 @@ function MatchDetail({ match, onBack }: { match: Match; onBack: () => void }) {
       {/* Docházka */}
       <section className="mb-5">
         <div className="mb-2 flex items-baseline justify-between">
-          <h2 className="text-lg font-bold">Docházka</h2>
-          <span className={`text-base font-bold tabular-nums ${availableCount < MIN_PLAYERS ? 'text-accent' : 'text-pitch'}`}>
+          <h2 className="text-lg font-bold"><Step n={1} /> Docházka</h2>
+          <span className={`text-base font-bold tabular-nums ${availableCount < MIN_PLAYERS ? 'text-accent' : 'text-primary'}`}>
             k dispozici {availableCount} / {squad.length}
           </span>
         </div>
@@ -163,9 +165,9 @@ function MatchDetail({ match, onBack }: { match: Match; onBack: () => void }) {
       {/* Sestava */}
       <section className="mb-5">
         <div className="mb-2 flex items-baseline justify-between">
-          <h2 className="text-lg font-bold">Startovní sestava</h2>
+          <h2 className="text-lg font-bold"><Step n={2} /> Startovní sestava</h2>
           {lineup && (
-            <span className={`text-base font-bold tabular-nums ${starting.filled < 8 ? 'text-accent' : 'text-pitch'}`}>{starting.filled} / 8</span>
+            <span className={`text-base font-bold tabular-nums ${starting.filled < 8 ? 'text-accent' : 'text-primary'}`}>{starting.filled} / 8</span>
           )}
         </div>
 
@@ -252,7 +254,28 @@ function MatchDetail({ match, onBack }: { match: Match; onBack: () => void }) {
         )}
       </section>
 
+      {/* Plán střídání */}
+      {lineup && !pickLineup && starting.formation && (
+        <section className="mb-5">
+          <div className="mb-2 flex items-baseline justify-between">
+            <h2 className="text-lg font-bold"><Step n={3} /> Střídání a rotace</h2>
+            <span className="text-sm text-ink-muted">každých {match.rotationIntervalMin} min</span>
+          </div>
+          <RotationPlan
+            match={match}
+            starting={starting}
+            players={players}
+            locked={locked}
+            onSet={(pid, slotId) => act.setRotationPartner(match.id, pid, slotId)}
+            onAuto={() => act.autoPlanRotation(match.id)}
+          />
+        </section>
+      )}
+
       {/* Start */}
+      {match.status === 'planned' && (
+        <h2 className="mb-2 text-lg font-bold"><Step n={4} /> Zápas</h2>
+      )}
       {match.status === 'planned' && (
         <section className="mb-5">
           <Btn
@@ -275,7 +298,7 @@ function MatchDetail({ match, onBack }: { match: Match; onBack: () => void }) {
       )}
 
       {!locked && (
-        <Btn kind="ghost" className="mt-6 w-full text-role-fwd" onClick={() => setConfirmDelete(true)}>
+        <Btn kind="ghost" className="mt-6 w-full text-accent" onClick={() => setConfirmDelete(true)}>
           Smazat zápas
         </Btn>
       )}
@@ -298,6 +321,10 @@ function MatchDetail({ match, onBack }: { match: Match; onBack: () => void }) {
   );
 }
 
+function Step({ n }: { n: number }) {
+  return <span className="mr-1 inline-flex size-6 items-center justify-center rounded-full bg-primary text-sm text-white">{n}</span>;
+}
+
 function AttendanceTile({ player, present, disabled, onTap }: { player: Player; present: boolean; disabled: boolean; onTap: () => void }) {
   return (
     <button
@@ -306,7 +333,7 @@ function AttendanceTile({ player, present, disabled, onTap }: { player: Player; 
       disabled={disabled}
       aria-pressed={present}
       className={`tap flex h-16 flex-col items-center justify-center rounded-xl border-2 px-1 ${
-        present ? 'border-pitch bg-pitch text-white' : 'border-ink/15 bg-white text-ink-muted line-through'
+        present ? 'border-primary bg-primary text-white' : 'border-ink/15 bg-white text-ink-muted line-through'
       } disabled:opacity-70`}
     >
       <span className="max-w-full truncate text-base font-bold">{player.name}</span>

@@ -34,7 +34,7 @@ export function LineupsModal({
           const f = formations.find((x) => x.id === l.formationId);
           const filled = Object.values(l.assignments).filter(Boolean).length;
           return (
-            <li key={l.id} className={`rounded-xl border-2 bg-white p-2 ${l.id === currentId ? 'border-pitch' : 'border-ink/10'}`}>
+            <li key={l.id} className={`rounded-xl border-2 bg-white p-2 ${l.id === currentId ? 'border-primary' : 'border-ink/10'}`}>
               <button
                 type="button"
                 onClick={() => {
@@ -49,7 +49,7 @@ export function LineupsModal({
                     {f?.name ?? '?'} · {filled}/8 · {new Date(l.updatedAt).toLocaleDateString('cs-CZ')}
                   </span>
                 </span>
-                <span className="font-semibold text-pitch">Načíst</span>
+                <span className="font-semibold text-primary">Načíst</span>
               </button>
               <div className="mt-1 flex gap-2">
                 <Btn kind="ghost" className="flex-1" onClick={() => { setRenaming(l); setName(l.name); }}>
@@ -58,7 +58,7 @@ export function LineupsModal({
                 <Btn kind="ghost" className="flex-1" onClick={() => onDuplicate(l.id)}>
                   Duplikovat
                 </Btn>
-                <Btn kind="ghost" className="flex-1 text-role-fwd" onClick={() => setConfirm(l)}>
+                <Btn kind="ghost" className="flex-1 text-accent" onClick={() => setConfirm(l)}>
                   Smazat
                 </Btn>
               </div>

@@ -18,6 +18,8 @@ import { BenchTile, type TileVisual } from '../components/BenchTile';
 import { FormationModal } from '../components/FormationModal';
 import { LineupsModal } from '../components/LineupsModal';
 import { NamePrompt } from '../components/NamePrompt';
+import { MatchForm } from '../components/MatchForm';
+import { todayISO } from '../lib/match';
 import { Btn } from '../components/Modal';
 import { orderBench, roleFit } from '../lib/lineup';
 import { formatMinutes, seasonSeconds } from '../lib/season';
@@ -34,7 +36,8 @@ export function LineupScreen() {
   const act = useStore();
 
   const [sel, setSel] = useState<Sel>(null);
-  const [modal, setModal] = useState<'formation' | 'lineups' | 'saveAs' | null>(null);
+  const [modal, setModal] = useState<'formation' | 'lineups' | 'saveAs' | 'newMatch' | null>(null);
+  const settings = useStore((s) => s.settings);
   const [dragging, setDragging] = useState<string | null>(null);
 
   const formation = formations.find((f) => f.id === draft.formationId) ?? formations[0];
@@ -212,6 +215,15 @@ export function LineupScreen() {
           </Pitch>
         </div>
 
+        {/* next step: a saved template can go straight into a new match */}
+        {!match && draft.lineupId && !isDirty && filled === 8 && (
+          <div className="px-3 pt-2">
+            <Btn kind="primary" className="w-full py-2" onClick={() => setModal('newMatch')}>
+              Připravit zápas s touto sestavou →
+            </Btn>
+          </div>
+        )}
+
         {/* bench */}
         <BenchArea hint={hint}>
           {sel?.kind === 'slot' && draft.assignments[sel.slotId] && (
@@ -274,6 +286,25 @@ export function LineupScreen() {
           onDuplicate={act.duplicateLineup}
           onDelete={act.deleteLineup}
           onRename={act.renameLineup}
+          onClose={() => setModal(null)}
+        />
+      )}
+      {modal === 'newMatch' && (
+        <MatchForm
+          title={`Nový zápas · ${draft.name}`}
+          initial={{
+            opponent: '',
+            date: todayISO(),
+            halfLengthMin: settings.defaultHalfLengthMin,
+            halvesCount: settings.defaultHalvesCount,
+            rotationIntervalMin: settings.defaultRotationIntervalMin,
+            rotateGoalkeeper: false,
+          }}
+          onSave={(input) => {
+            act.createMatch(input, draft.lineupId);
+            setModal(null);
+            act.setTab('match');
+          }}
           onClose={() => setModal(null)}
         />
       )}

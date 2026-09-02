@@ -85,6 +85,7 @@ export function parseImport(text: string): ParseResult {
         ...m,
         rotationIntervalMin: num(m.rotationIntervalMin, s.defaultRotationIntervalMin),
         rotateGoalkeeper: m.rotateGoalkeeper === true,
+        rotationGroups: isObj(m.rotationGroups) ? (m.rotationGroups as Record<string, string[]>) : {},
       })),
       settings: s,
     },

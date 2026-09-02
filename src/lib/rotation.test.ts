@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeLoad, cyclePairOff, playSecondsSince, proposeRotation, rotationAnchor, type RotationInput } from './rotation';
+import { absorbSubs, computeLoad, cyclePairOff, planRotationGroups, playSecondsSince, proposeFromPlan, proposeRotation, rotationAnchor, sanitizeGroups, setRotationPartner, type RotationInput } from './rotation';
 import { SEED_FORMATIONS, SEED_PLAYERS } from '../data/seed';
 
 const f = SEED_FORMATIONS[0]; // 2-3-2: gk, 1 DEF, 2 DEF, 3 MID_W, 4 MID_C, 5 MID_W, 6 FWD, 7 FWD
@@ -88,5 +88,54 @@ describe('computeLoad', () => {
   });
   it('no flags at the very start', () => {
     expect(computeLoad(['a', 'b'], {}).rows.every((r) => !r.low)).toBe(true);
+  });
+});
+
+describe('rotation plan', () => {
+  const starting = { [id('gk')]: 'adis', [id(1)]: 'jony', [id(2)]: 'pilka', [id(3)]: 'albi', [id(4)]: 'sima', [id(5)]: 'honza', [id(6)]: 'ondra', [id(7)]: 'marian' };
+
+  it('planRotationGroups spreads bench players over best-fit slots, one partner per slot first', () => {
+    const g = planRotationGroups(f, starting, ['nik', 'adri', 'korci', 'damian', 'jara'], SEED_PLAYERS, false);
+    expect(g[id('gk')]).toEqual(['adis']); // pure GK nik not planned
+    expect([g[id(1)], g[id(2)]].some((x) => x.includes('adri'))).toBe(true);
+    expect(g[id(4)]).toEqual(['sima', 'korci']);
+    const wingGroups = [g[id(3)], g[id(5)]];
+    expect(wingGroups.flat().filter((x) => x === 'damian' || x === 'jara')).toHaveLength(2);
+    expect(wingGroups.every((x) => x.length === 2)).toBe(true); // one winger each, not both on one slot
+  });
+
+  it('setRotationPartner moves a player between groups or out of the plan', () => {
+    let g = planRotationGroups(f, starting, ['adri'], SEED_PLAYERS, false);
+    g = setRotationPartner(g, 'adri', id(4));
+    expect(g[id(4)]).toContain('adri');
+    expect([g[id(1)], g[id(2)]].flat()).not.toContain('adri');
+    g = setRotationPartner(g, 'adri', null);
+    expect(Object.values(g).flat()).not.toContain('adri');
+  });
+
+  it('proposeFromPlan pairs planned partners and falls back for unplanned bench players', () => {
+    const groups = { [id(1)]: ['jony', 'adri'], [id(4)]: ['sima', 'korci'] };
+    const input = { ...base, benchIds: ['adri', 'korci', 'damian'] };
+    const pairs = proposeFromPlan(input, groups);
+    expect(pairs.find((p) => p.onPlayerId === 'adri')).toMatchObject({ offPlayerId: 'jony', slotId: id(1) });
+    expect(pairs.find((p) => p.onPlayerId === 'korci')).toMatchObject({ offPlayerId: 'sima', slotId: id(4) });
+    const dam = pairs.find((p) => p.onPlayerId === 'damian')!;
+    expect([id(3), id(5)]).toContain(dam.slotId); // winger → a wing slot not used by the plan
+  });
+
+  it('after the swap the group member on the bench is the one who came off', () => {
+    const groups = { [id(1)]: ['jony', 'adri'] };
+    const swapped = { ...base, onPitch: { ...base.onPitch, [id(1)]: 'adri' }, benchIds: ['jony'] };
+    expect(proposeFromPlan(swapped, groups)[0]).toMatchObject({ onPlayerId: 'jony', offPlayerId: 'adri' });
+  });
+
+  it('absorbSubs adds both players to the slot group', () => {
+    const g = absorbSubs({}, [{ onPlayerId: 'adri', offPlayerId: 'jony', slotId: id(1) }]);
+    expect(g[id(1)].sort()).toEqual(['adri', 'jony']);
+  });
+
+  it('sanitizeGroups drops unknown slots and absent players', () => {
+    const g = sanitizeGroups({ [id(1)]: ['jony', 'ghost'], 'other-slot': ['x'] }, f, ['jony']);
+    expect(g).toEqual({ [id(1)]: ['jony'] });
   });
 });

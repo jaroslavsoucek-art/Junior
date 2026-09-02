@@ -42,7 +42,7 @@ export function LoadPanel({
             {rows.map((r) => (
               <li key={r.playerId} className={`flex items-center justify-between border-t border-ink/5 py-2 ${r.low ? 'text-accent' : ''}`}>
                 <span className="flex items-center gap-2">
-                  <span className={`inline-block size-2.5 rounded-full ${onPitchIds.has(r.playerId) ? 'bg-pitch' : 'bg-ink/20'}`} aria-hidden />
+                  <span className={`inline-block size-2.5 rounded-full ${onPitchIds.has(r.playerId) ? 'bg-primary' : 'bg-ink/20'}`} aria-hidden />
                   <span className="text-lg font-semibold">{byId.get(r.playerId)?.name ?? r.playerId}</span>
                 </span>
                 <span className="flex items-baseline gap-3 tabular-nums">

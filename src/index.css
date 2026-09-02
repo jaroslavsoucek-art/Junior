@@ -6,11 +6,13 @@
   --color-pitch-dark: #245536;
   --color-pitch-line: #e8f0e9;
 
-  /* Light, high-contrast UI. Saturated colour is an accent only. */
-  --color-paper: #f4f4f0;
-  --color-ink: #17201b;
-  --color-ink-muted: #5b665f;
-  --color-accent: #d9480f;
+  /* Club colours (SK Junior Praha): navy, red, gold. Light, high-contrast UI. */
+  --color-primary: #161c4b; /* navy – buttons, active tab, headings */
+  --color-accent: #a4172a; /* red – warnings, selection, danger */
+  --color-gold: #f2b826; /* gold – highlights (targets, low-minutes) */
+  --color-paper: #f5f4f0;
+  --color-ink: #141728;
+  --color-ink-muted: #5c6070;
 
   /* Role colours (chips / dots). */
   --color-role-gk: #b7791f;
