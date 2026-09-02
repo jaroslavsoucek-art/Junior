@@ -148,7 +148,7 @@ function FinishedView({ match }: { match: Match }) {
       <ul className="flex flex-col gap-1">
         {visible.map((r) => (
           <li key={r.playerId} className={`flex min-h-11 items-center gap-2.5 rounded-[14px] border px-3.5 py-1 ${r.low ? 'border-accent-line bg-accent-soft' : 'border-line bg-surface'}`}>
-            <span className={`size-2 shrink-0 rounded-full ${onPitchIds.has(r.playerId) ? 'bg-primary' : 'bg-ink/20'}`} aria-hidden />
+            <span className={`size-2 shrink-0 rounded-full ${onPitchIds.has(r.playerId) ? 'bg-btn' : 'bg-ink/20'}`} aria-hidden />
             <span className={`min-w-0 flex-1 truncate text-[15px] font-bold ${r.low ? 'text-accent-text' : 'text-ink'}`}>{byId.get(r.playerId)?.name ?? r.playerId}</span>
             <span className={`tabular text-[15px] font-extrabold ${r.low ? 'text-accent-text' : 'text-ink'}`}>{formatClock(r.seconds)}</span>
             <span className={`tabular w-[62px] text-right text-[12px] font-bold ${r.low ? 'text-accent-text' : 'text-muted'}`}>{dev(r.deviation)}</span>
