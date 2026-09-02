@@ -9,7 +9,7 @@
     "preview": "vite preview --host",
     "test": "vitest run",
     "lint": "oxlint",
-    "icons": "node scripts/gen-icons.mjs"
+    "icons": "swift scripts/gen-icons.swift"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

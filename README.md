@@ -18,7 +18,7 @@ Vývojový server neregistruje service worker. Offline chování testuj na produ
 npm run build      # tsc + vite build + generování sw.js a manifestu do dist/
 npm run preview    # servíruje dist/ na http://<IP-počítače>:4173 (--host)
 npm test           # Vitest – logika výpočtu minut
-npm run icons      # přegeneruje PNG ikony z scripts/gen-icons.mjs
+npm run icons      # přegeneruje ikony z loga scripts/logo-src.png (Swift/CoreGraphics, potřebuje Xcode CLT)
 ```
 
 ### Instalace na plochu telefonu
@@ -58,7 +58,7 @@ src/
                     Pitch (SVG), SlotMarker, BenchTile, FormationModal, LineupsModal, NamePrompt,
                     MatchForm, LineupPreview (read-only hřiště), RotationSheet, LoadPanel
   screens/          Roster (+ Settings pod ozubeným kolem), Match, Lineup, Live
-scripts/gen-icons.mjs   PNG ikony bez závislostí
+scripts/gen-icons.swift  ikony z loga klubu (scripts/logo-src.png), bílé pozadí, maskable v 80 % safe zóně
 ```
 
 ## Rozhodnutí, která jsem udělal sám
@@ -66,7 +66,7 @@ scripts/gen-icons.mjs   PNG ikony bez závislostí
 - **React 18** (dle zadání) na **Vite 8** a **Tailwind v4** (plugin `@tailwindcss/vite`, tokeny v `@theme` v `index.css`, žádný `tailwind.config`).
 - **Role v UI** mají česká zkratky: GK, OB (obrana), SZ (střední záložník), KŘ (křídlo), ÚT (útok). Barvy rolí jsou v `index.css`.
 - **Souřadnice formací**: brankář y = 0.12 (níž by se jmenovka ořízla o okraj SVG), obrana ~0.27, střed ~0.5–0.6, útok ~0.8. Slot id = `<formationId>-gk`, `<formationId>-1..7`.
-- **Ikony** jsou generované skriptem (zelený čtverec, bílý míč). Když budeš chtít logo klubu, nahraď PNG v `public/icons/` a pusť build.
+- **Ikony** jsou z loga SK Junior Praha (`scripts/logo-src.png`). Logo má průhledné pozadí, které by iOS na ploše vykreslil černě, proto jsou ikony podložené bílou a oříznuté na obsah (`gen-icons.swift` najde bounding box neprůhledných pixelů). Favicon v prohlížeči je průhledný PNG 64/32 px.
 - **Persist** ukládá jen data (`players, formations, lineups, matches, settings`), ne akce. Klíč `junior-v1`, `version: 1` – při změně schématu přidám `migrate`.
 - **Seed** se použije jen když v `localStorage` nic není. Smazání dat = návrat k seedu.
 - **Export na iOS**: standalone PWA na iOS neumí spolehlivě `<a download>`, proto export nejdřív zkusí Web Share API se souborem (share sheet → „Uložit do Souborů“) a teprve když není, použije klasický download. Soubor má obálku `{ schema: 'junior', version, exportedAt, data }`; import bere i holý objekt dat.

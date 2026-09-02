@@ -16,7 +16,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
-      includeAssets: ['icons/*.png', 'favicon.svg'],
+      includeAssets: ['icons/*.png', 'favicon.png', 'favicon-32.png'],
       manifest: {
         name: 'Junior – sestavy 7+1',
         short_name: 'Junior',
